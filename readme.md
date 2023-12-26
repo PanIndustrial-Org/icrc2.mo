@@ -1,5 +1,7 @@
 # icrc2.mo
 
+## Warning - This is an alpha release. It has not been audited and should not be used in production.
+
 ## Install
 ```
 mops add icrc2-mo
