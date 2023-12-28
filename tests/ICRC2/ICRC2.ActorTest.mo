@@ -686,7 +686,7 @@ module {
                   // Check that the allowance was capped at max_supply or returned an error
                   let allowance = icrc2.allowance(user2, user1, false);
                   D.print("found allowance " # debug_show(allowance));
-                  assertTrue(allowance == 100000000);
+                  assertTrue(allowance.allowance == 100000000);
               },
             ),
             it(
@@ -729,7 +729,7 @@ module {
                   });
 
                   assertAllTrue([
-                      allowance == 0, // Allowance should now be zero
+                      allowance.allowance == 0, // Allowance should now be zero
                       switch (transferResult) {
                           case (#trappable(#Err(#InsufficientAllowance(_)))) true;
                           case _ false;
@@ -1202,7 +1202,7 @@ module {
                     // Try to get allowance for unapproved user2
                     let allowance = icrc2.allowance(user2, user1, false);
                     
-                    assertTrue(allowance == 0); // Non-existing approvals should return zero allowance
+                    assertTrue(allowance.allowance == 0); // Non-existing approvals should return zero allowance
                 },
             ),
             it(
@@ -1251,7 +1251,7 @@ module {
 
                     
                     let expectedAllowance = (100 * e8s) - transferAmount - base_fee; // Replace `transferAmount` with the actual transferred amount
-                    assertTrue(allowanceAfterTransfer == expectedAllowance);
+                    assertTrue(allowanceAfterTransfer.allowance == expectedAllowance);
                 },
             ),
             

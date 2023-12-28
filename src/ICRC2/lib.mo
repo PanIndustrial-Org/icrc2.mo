@@ -1153,12 +1153,12 @@ module {
     ///     - from: `Account` - The account tha has approved the amount
     ///     - clean: Bool - For update queries use this set to true to remove expired items
     /// - Returns: `Bool` - A boolean indicating if the spender is approved for the specified token.
-    public func allowance(spender : Account, from: Account, clean: Bool) : Nat {
+    public func allowance(spender : Account, from: Account, clean: Bool) : Allowance {
 
       debug if(debug_channel.announce) D.print("is_approved " # debug_show(spender, from));
 
       switch(Map.get<(Account,Account), ApprovalInfo>(state.token_approvals, apphash, (from, spender))){
-        case(null){ return 0};
+        case(null){ return { allowance = 0; expires_at = null}};
         case(?val){
           switch(val.expires_at){
             case(?expires_at){
@@ -1167,13 +1167,13 @@ module {
                   ignore Map.remove<(Account,Account), ApprovalInfo>(state.token_approvals, apphash, (from, spender));
                   unIndex(from,spender);
                 };
-                return 0;
+                return {allowance = 0; expires_at = null};
               } else {
-                return val.amount;
+                return {allowance = val.amount; expires_at = val.expires_at};
               }
             };
             case(null) {
-              return val.amount;
+              return {allowance = val.amount; expires_at = val.expires_at};
             };
           };
         };

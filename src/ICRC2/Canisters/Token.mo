@@ -143,6 +143,10 @@ shared ({ caller = _owner }) actor class Token  (
         await*  icrc1().burn(caller, args);
     };
 
+    public query ({ caller }) func icrc2_allowance(args: ICRC2.AllowanceArgs) : async ICRC2.Allowance {
+      return icrc2().allowance(args.spender, args.account, false);
+    };
+
     public shared ({ caller }) func icrc2_approve(args : ICRC2.ApproveArgs) : async ICRC2.ApproveResponse {
         await*  icrc2().approve(caller, args);
     };
