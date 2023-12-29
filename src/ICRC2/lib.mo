@@ -802,9 +802,16 @@ module {
       switch(testExpiresAt(approval.expires_at)){
         case(?null){};
         case(??val){
-          Vec.add(trx,("exp", #Nat(Nat64.toNat(val))));
+          Vec.add(trx,("expires_at", #Nat(Nat64.toNat(val))));
         };
         case(_){}; //unreachable if called from approve_transfers
+      };
+
+      switch(approval.expected_allowance){
+        case(null){};
+        case(?val){
+          Vec.add(trx,("expected_allowance", #Nat(val)));
+        };
       };
 
       //test that the expires is not in the past
@@ -815,7 +822,7 @@ module {
         };
       };
 
-      Vec.add(trx,("op", #Text("appr")));
+      Vec.add(trx,("op", #Text("approve")));
 
       Vec.add(trxtop,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
 
@@ -1296,7 +1303,7 @@ module {
           
         let trx = Vec.new<(Text, Value)>();
         let trxtop = Vec.new<(Text, Value)>();
-        Vec.add(trx, ("op", #Text("appr")));
+        Vec.add(trx, ("op", #Text("approve")));
         Vec.add(trxtop, ("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
         Vec.add(trx, ("from", ICRC1.UtilsHelper.accountToValue(thisItem.0.0)));
         Vec.add(trx, ("spender", ICRC1.UtilsHelper.accountToValue(thisItem.0.1)));
@@ -1521,7 +1528,7 @@ module {
         };
 
         Vec.add(trx,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
-        Vec.add(trx,("op", #Text("xfer_from")));
+        Vec.add(trx,("op", #Text("xfer")));
         
         Vec.add(trx,("from", ICRC1.UtilsHelper.accountToValue(transferFromArgs.from)));
         Vec.add(trx,("to", ICRC1.UtilsHelper.accountToValue(transferFromArgs.to)));
