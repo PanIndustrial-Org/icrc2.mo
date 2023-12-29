@@ -357,30 +357,33 @@ module {
           for(thisItem in md.vals()){
             ignore Map.put(results, Map.thash, thisItem.0, thisItem);
           };
+
           let metadata = Vec.new<ICRC1.MetaDatum>();
-          Vec.add(metadata, ("icrc2:max_approvals_per_account", #Nat(state.ledger_info.max_approvals_per_account)));
-          Vec.add(metadata, ("icrc2:max_approvals", #Nat(state.ledger_info.max_approvals)));
-          Vec.add(metadata, ("icrc2:settle_to_approvals", #Nat(state.ledger_info.settle_to_approvals)));
+          ignore Map.put(results, Map.thash, "icrc2:max_approvals_per_account",("icrc2:max_approvals_per_account", #Nat(state.ledger_info.max_approvals_per_account)));
+          ignore Map.put(results, Map.thash,"icrc2:max_approvals", ("icrc2:max_approvals", #Nat(state.ledger_info.max_approvals)));
+          ignore Map.put(results, Map.thash,"icrc2:settle_to_approvals", ("icrc2:settle_to_approvals", #Nat(state.ledger_info.settle_to_approvals)));
           switch(state.ledger_info.max_allowance){
             case(?val){
               switch(val){
-                case(#Fixed(fixed)) Vec.add(metadata, ("icrc2:max_allowance", #Nat(fixed)));
-                case(#TotalSupply) Vec.add(metadata, ("icrc2:max_allowance", #Text("total_supply")));
+                case(#Fixed(fixed)) ignore Map.put(results, Map.thash, "icrc2:max_allowance", ("icrc2:max_allowance", #Nat(fixed)));
+                case(#TotalSupply) ignore Map.put(results, Map.thash, "icrc2:max_allowance", ("icrc2:max_allowance", #Text("total_supply")));
               };
             };
             case(null){};
           };
 
-           Vec.add(metadata, ("icrc2:fee", switch(state.ledger_info.fee){
+          ignore Map.put(results, Map.thash, "icrc2:fee", ("icrc2:fee", switch(state.ledger_info.fee){
                 case(#ICRC1) #Text("icrc1"); 
                 case(#Fixed(val)) #Nat(val);
                 case(#Environment) #Nat(10000); //a lie as it is determined at runtime.
           }));
 
-          state.ledger_info.metadata := ?#Map(Vec.toArray(metadata));
-          ignore environment.icrc1.register_metadata(Vec.toArray(metadata));
+          let final_result = Iter.toArray(Map.vals(results));
 
-          #Map(Vec.toArray(metadata));
+          state.ledger_info.metadata := ?#Map(final_result);
+          ignore environment.icrc1.register_metadata(final_result);
+
+          #Map(final_result);
       };
 
     /// # get_fee
