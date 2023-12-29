@@ -122,6 +122,7 @@ module {
             name = ?"Under-Collaterised Lending Tokens";
             symbol = ?"UCLTs";
             decimals = 8;
+            logo = ?"baselogo";
             fee = ?#Fixed(base_fee);
             max_supply = ?(max_supply);
             minting_account = ?canister;

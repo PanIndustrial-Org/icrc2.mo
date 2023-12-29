@@ -345,10 +345,10 @@ module {
             case(?val){
               switch(val){
                 case(#Map(val)) val;
-                case(_) D.trap("malformed metadata");
+                case(_) [];
               };
             };
-            case(null){D.trap("unreachable metadata");}
+            case(null)[];
           };
 
           let results = Map.new<Text, ICRC1.MetaDatum>();
@@ -1884,6 +1884,16 @@ module {
         };
       };
     };
+
+    ///register some items with icrc1
+    ignore init_metadata();
+
+    ignore environment.icrc1.register_supported_standards({
+        name = "ICRC-2";
+        url = "https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-2/";
+    });
+
+
 
   };
 };
