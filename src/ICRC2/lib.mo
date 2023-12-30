@@ -890,6 +890,7 @@ module {
                 case(#trappable(val)) val;
                 case(#awaited(val)){
                   //revalidate 
+                  let override_fee = val.2.calculated_fee;
                   switch (Star.toResult(validate_approval(from, {
                     amount = val.2.amount;
                     requested_amount = val.2.requested_amount;
@@ -900,7 +901,7 @@ module {
                     expires_at = val.2.expires_at;
                     from_subaccount = val.2.from.subaccount;
                     memo = val.2.memo;
-                    }, val.2.calculated_fee, system_override))) {
+                    }, override_fee, system_override))) {
                       case (#err(errorType)) {
                           return #err(#awaited(errorType));
                       };
@@ -929,12 +930,14 @@ module {
 
       var finaltxtop_var = finaltxtop;
 
+      let final_fee = tokenApprovalNotification.calculated_fee;
+
       let icrc1state = environment.icrc1.get_state();
 
       // burn fee
       switch(icrc1state.fee_collector){
         case(null){
-          ICRC1.UtilsHelper.burn_balance(icrc1state, from, fee);
+          ICRC1.UtilsHelper.burn_balance(icrc1state, from, final_fee);
         };
         case(?val){
             
@@ -964,7 +967,7 @@ module {
             tokenApprovalNotification with
             kind = #transfer;
             to = val;
-            amount = fee;
+            amount = final_fee;
           });
         };
       };
@@ -1587,6 +1590,8 @@ module {
             switch(await* remote_func(txMap, ?txTopMap, preNotification)){
               case(#trappable(val)) val;
               case(#awaited(val)){
+
+                let override_fee = val.2.calculated_fee;
                 //revalidate 
                 current_approval := switch (validate_transfer_from(spender, {
                   amount = val.2.amount;
@@ -1596,7 +1601,7 @@ module {
                   from = val.2.from;
                   to = val.2.to;
                   memo = val.2.memo;
-                  }, val.2.calculated_fee, true)) {
+                  }, override_fee, true)) {
                     case((#ok(val), approval)){
                       switch(val){
                         case(#Ok(_)){
@@ -1633,6 +1638,8 @@ module {
 
         D.print("Moving tokens");
 
+        let final_fee = notification.calculated_fee;
+
         let icrc1state = environment.icrc1.get_state();
 
         let tx_req = if(account_eq(environment.icrc1.minting_account(), notification.to)){
@@ -1642,7 +1649,7 @@ module {
                 from = notification.from;
                 to = notification.to;
                 amount = notification.amount;
-                fee = notification.fee;
+                fee = ?final_fee;
                 memo = notification.memo;
                 created_at_time = notification.created_at_time;
             }
@@ -1654,7 +1661,7 @@ module {
                 from = notification.from;
                 to = notification.to;
                 amount = notification.amount;
-                fee = notification.fee;
+                fee = ?final_fee;
                 memo = notification.memo;
                 created_at_time = notification.created_at_time;
             };
@@ -1668,7 +1675,7 @@ module {
             // burn fee
             switch(icrc1state.fee_collector){
               case(null){
-                ICRC1.UtilsHelper.burn_balance(icrc1state, this_transfer.from, fee);
+                ICRC1.UtilsHelper.burn_balance(icrc1state, this_transfer.from, final_fee);
               };
               case(?val){
                   
@@ -1698,7 +1705,7 @@ module {
                   this_transfer with
                   kind = #transfer;
                   to = val;
-                  amount = fee;
+                  amount = final_fee;
                 });
               };
             };
@@ -1709,7 +1716,7 @@ module {
         if(current_approval.amount > notification.amount + fee){
           ignore Map.put(state.token_approvals, apphash, (notification.from, notification.spender), {
             current_approval with
-            amount = current_approval.amount - (notification.amount + fee);
+            amount = current_approval.amount - (notification.amount + final_fee);
           });
         } else {
           ignore Map.remove(state.token_approvals, apphash, (notification.from, notification.spender));
