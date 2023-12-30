@@ -935,40 +935,42 @@ module {
       let icrc1state = environment.icrc1.get_state();
 
       // burn fee
-      switch(icrc1state.fee_collector){
-        case(null){
-          ICRC1.UtilsHelper.burn_balance(icrc1state, from, final_fee);
-        };
-        case(?val){
-            
-          if(fee > 0){
-            if(icrc1state.fee_collector_emitted){
-              finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector_block", #Nat(icrc1state.fee_collector_block))){
-                case(#ok(val)) ?val;
-                case(#err(err)) return if(bAwaited){
-                  #err(#awaited("unreachable map addition"));
-                } else {
-                  #err(#trappable("unreachable map addition"));
+      if(final_fee > 0){
+        switch(icrc1state.fee_collector){
+          case(null){
+            ICRC1.UtilsHelper.burn_balance(icrc1state, from, final_fee);
+          };
+          case(?val){
+              
+            if(fee > 0){
+              if(icrc1state.fee_collector_emitted){
+                finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector_block", #Nat(icrc1state.fee_collector_block))){
+                  case(#ok(val)) ?val;
+                  case(#err(err)) return if(bAwaited){
+                    #err(#awaited("unreachable map addition"));
+                  } else {
+                    #err(#trappable("unreachable map addition"));
+                  };
                 };
-              };
-            } else {
-              finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector", ICRC1.UtilsHelper.accountToValue(val))){
-                case(#ok(val)) ?val;
-                case(#err(err)) return if(bAwaited){
-                  #err(#awaited("unreachable map addition"));
-                } else {
-                  #err(#trappable("unreachable map addition"));
+              } else {
+                finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector", ICRC1.UtilsHelper.accountToValue(val))){
+                  case(#ok(val)) ?val;
+                  case(#err(err)) return if(bAwaited){
+                    #err(#awaited("unreachable map addition"));
+                  } else {
+                    #err(#trappable("unreachable map addition"));
+                  };
                 };
               };
             };
-          };
 
-          ICRC1.UtilsHelper.transfer_balance(icrc1state,{
-            tokenApprovalNotification with
-            kind = #transfer;
-            to = val;
-            amount = final_fee;
-          });
+            ICRC1.UtilsHelper.transfer_balance(icrc1state,{
+              tokenApprovalNotification with
+              kind = #transfer;
+              to = val;
+              amount = final_fee;
+            });
+          };
         };
       };
 
@@ -1673,40 +1675,42 @@ module {
             var finaltxtop_var = finaltxtop;
 
             // burn fee
-            switch(icrc1state.fee_collector){
-              case(null){
-                ICRC1.UtilsHelper.burn_balance(icrc1state, this_transfer.from, final_fee);
-              };
-              case(?val){
-                  
-                if(fee > 0){
-                  if(icrc1state.fee_collector_emitted){
-                    finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector_block", #Nat(icrc1state.fee_collector_block))){
-                      case(#ok(val)) ?val;
-                      case(#err(err)) return if(bAwaited){
-                        #err(#awaited("unreachable map addition"));
-                      } else {
-                        #err(#trappable("unreachable map addition"));
+            if(final_fee > 0){
+              switch(icrc1state.fee_collector){
+                case(null){
+                  ICRC1.UtilsHelper.burn_balance(icrc1state, this_transfer.from, final_fee);
+                };
+                case(?val){
+                    
+                  if(fee > 0){
+                    if(icrc1state.fee_collector_emitted){
+                      finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector_block", #Nat(icrc1state.fee_collector_block))){
+                        case(#ok(val)) ?val;
+                        case(#err(err)) return if(bAwaited){
+                          #err(#awaited("unreachable map addition"));
+                        } else {
+                          #err(#trappable("unreachable map addition"));
+                        };
                       };
-                    };
-                  } else {
-                    finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector", ICRC1.UtilsHelper.accountToValue(val))){
-                      case(#ok(val)) ?val;
-                      case(#err(err)) return if(bAwaited){
-                        #err(#awaited("unreachable map addition"));
-                      } else {
-                        #err(#trappable("unreachable map addition"));
+                    } else {
+                      finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector", ICRC1.UtilsHelper.accountToValue(val))){
+                        case(#ok(val)) ?val;
+                        case(#err(err)) return if(bAwaited){
+                          #err(#awaited("unreachable map addition"));
+                        } else {
+                          #err(#trappable("unreachable map addition"));
+                        };
                       };
                     };
                   };
-                };
 
-                ICRC1.UtilsHelper.transfer_balance(icrc1state,{
-                  this_transfer with
-                  kind = #transfer;
-                  to = val;
-                  amount = final_fee;
-                });
+                  ICRC1.UtilsHelper.transfer_balance(icrc1state,{
+                    this_transfer with
+                    kind = #transfer;
+                    to = val;
+                    amount = final_fee;
+                  });
+                };
               };
             };
             this_transfer
