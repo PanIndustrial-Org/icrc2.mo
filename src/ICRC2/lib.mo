@@ -767,7 +767,7 @@ module {
         };
         case(?#TotalSupply){
           let total_supply = environment.icrc1.total_supply();
-          D.print("limiting by total supply" # debug_show(total_supply));
+          debug if(debug_channel.approve) D.print("limiting by total supply" # debug_show(total_supply));
           if(approval.amount > total_supply){
             let next_total_supply = total_supply - fee;
             Vec.add(trx,("amt", #Nat(approval.amount)));
@@ -1638,8 +1638,6 @@ module {
 
         debug if(debug_channel.transfer) D.print("ready to move tokens " # debug_show(preNotification));
 
-        D.print("Moving tokens");
-
         let final_fee = notification.calculated_fee;
 
         let icrc1state = environment.icrc1.get_state();
@@ -1758,7 +1756,7 @@ module {
         //add trx for dedupe
         let posttrxhash = Blob.fromArray(RepIndy.hash_val(finaltx));
 
-        D.print("attempting to add recent" # debug_show(posttrxhash, finaltx));
+        debug if (debug_channel.transfer) D.print("attempting to add recent" # debug_show(posttrxhash, finaltx));
 
         ignore Map.put<Blob, (Nat64, Nat)>(icrc1state.recent_transactions, Map.bhash, posttrxhash, (environment.icrc1.get_time64(), index));
         if(bAwaited){
@@ -1783,7 +1781,7 @@ module {
           case(_){}
         };
 
-        D.print("done transfer");
+        debug if (debug_channel.transfer) D.print("done transfer");
         if(bAwaited){
           #awaited(#Ok(index));
         } else {
