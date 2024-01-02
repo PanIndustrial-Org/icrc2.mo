@@ -18,7 +18,7 @@ matchers = "https://github.com/kritzcreek/motoko-matchers#v1.3.0@3dac8a071b69e4e
 
 [package]
 name = "icrc2-mo"
-version = "0.0.6"
+version = "0.0.7"
 description = "icrc2 for motoko"
 repository = "https://github.com/PanIndustrial-Org/icrc2.mo"
 keywords = [ "icrc2", "fungible", "token", "standard", "dfinity" ]
