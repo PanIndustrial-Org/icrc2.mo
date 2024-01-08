@@ -30,8 +30,8 @@ module {
 
     let debug_channel = {
       announce = false;
-      transfer = true;
-      approve = true;
+      transfer = false;
+      approve = false;
     };
 
     /// # State
@@ -42,7 +42,7 @@ module {
     /// ## Example
     ///
     /// ```
-    /// let initialState = ICRC30.initialState();
+    /// let initialState = ICRC2.initialState();
     /// let currentState = #v0_1_0(#data(initialState));
     /// ```
     public type State =               MigrationTypes.State;
@@ -110,6 +110,9 @@ module {
     public type AllowanceArgs = MigrationTypes.Current.AllowanceArgs;
     public type Allowance = MigrationTypes.Current.Allowance;
     public type TransferFromResponse = MigrationTypes.Current.TransferFromResponse;
+   
+    public type CanTransferFrom = MigrationTypes.Current.CanTransferFrom;
+    public type CanApprove = MigrationTypes.Current.CanApprove;
 
     public type UpdateLedgerInfoRequest = MigrationTypes.Current.UpdateLedgerInfoRequest;
     public type MetaDatum = ICRC1.MetaDatum;
@@ -172,33 +175,33 @@ module {
     public let account_eq = MigrationTypes.Current.account_eq;
     public let apphash = MigrationTypes.Current.apphash;
 
-  /// #class ICRC30 
-  /// Initializes the state of the ICRC30 class.
+  /// #class ICRC2
+  /// Initializes the state of the ICRC2 class.
   /// - Parameters:
   ///     - stored: `?State` - An optional initial state to start with; if `null`, the initial state is derived from the `initialState` function.
   ///     - canister: `Principal` - The principal of the canister where this class is used.
   ///     - environment: `Environment` - The environment settings for various ICRC standards-related configurations.
   /// - Returns: No explicit return value as this is a class constructor function.
   ///
-  /// The `ICRC30` class encapsulates the logic for managing approvals and transfers of NFTs.
+  /// The `ICRC2` class encapsulates the logic for managing approvals and transfers of tokens.
   /// Within the class, we have various methods such as `get_ledger_info`, `approve_transfers`, 
   /// `is_approved`, `get_token_approvals`, `revoke_collection_approvals`, and many others
-  /// that assist in handling the ICRC-30 standard functionalities like getting and setting 
-  /// approvals, revoking them, and performing transfers of NFTs.
+  /// that assist in handling the ICRC-2 standard functionalities like getting and setting 
+  /// approvals, revoking them, and performing transfers of tokens.
   ///
   /// The methods often utilize helper functions like `testMemo`, `testExpiresAt`, `testCreatedAt`, 
   /// `revoke_approvals`, `cleanUpApprovals`, `update_ledger_info`, `revoke_collection_approval`, 
   /// `approve_transfer`, `transfer_token`, `revoke_token_approval` and others that perform 
   /// specific operations such as validation of data and performing the necessary changes to the approvals 
-  /// and the ledger based on the NFT transactions.
+  /// and the ledger based on the token transactions.
   ///
   /// Event listeners and clean-up routines are also defined to maintain the correct state 
   /// of approvals after transfers and to ensure the system remains within configured limitations.
   ///
-  /// The `ICRC30` class allows for detailed ledger updates using `update_ledger_info`, 
+  /// The `ICRC2` class allows for detailed ledger updates using `update_ledger_info`, 
   /// querying for different approval states, and managing the transfer of tokens.
   ///    
-  /// Additional functions like `get_stats` provide insight into the current state of NFT approvals.
+  /// Additional functions like `get_stats` provide insight into the current state of  approvals.
   public class ICRC2(stored: ?State, canister: Principal, environment: Environment){
 
     /// # State
@@ -209,7 +212,7 @@ module {
     /// ## Example
     ///
     /// ```
-    /// let initialState = ICRC30.initialState();
+    /// let initialState = ICRC2.initialState();
     /// let currentState = #v0_1_0(#data(initialState));
     /// ```
     var state : CurrentState = switch(stored){
@@ -533,7 +536,7 @@ module {
             };
 
             //test that the memo is not too large
-            let ?(memo) = testMemo(approval.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
+            let ?(memo) = environment.icrc1.testMemo(approval.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
 
             //test that the expires is not in the past
             let ?(expires_at) = testExpiresAt(approval.expires_at) else return #trappable(#Err(#Expired({ledger_time = environment.icrc1.get_time64()})));
@@ -557,7 +560,7 @@ module {
             };
 
             //make sure the approval is not too old or too far in the future
-            let created_at_time = switch(testCreatedAt(approval.created_at_time, environment)){
+            let created_at_time = switch(environment.icrc1.testCreatedAt(approval.created_at_time)){
               case(#ok(val)) val;
               case(#Err(#TooOld)) return #trappable(#Err(#TooOld));
               case(#Err(#InTheFuture(val))) return  #trappable(#Err(#CreatedInFuture({ledger_time = environment.icrc1.get_time64()})));
@@ -625,7 +628,7 @@ module {
       };
 
       //test that the memo is not too large
-      let ?(memo) = testMemo(transfer.memo) else return (#err("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"), null);
+      let ?(memo) = environment.icrc1.testMemo(transfer.memo) else return (#err("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"), null);
 
       //test that the expires is not in the past
       let ?(expires_at) = testExpiresAt(currentApproval.expires_at) else{
@@ -642,7 +645,7 @@ module {
       };
 
       //make sure the transfer from is not too old or too far in the future
-      let created_at_time = switch(testCreatedAt(transfer.created_at_time, environment)){
+      let created_at_time = switch(environment.icrc1.testCreatedAt(transfer.created_at_time)){
         case(#ok(val)) val;
         case(#Err(#TooOld)) return (#ok(#Err(#TooOld)), null);
         case(#Err(#InTheFuture(val))) return  (#ok(#Err(#CreatedInFuture({ledger_time = environment.icrc1.get_time64()}))), null);
@@ -700,7 +703,7 @@ module {
     /// let result = await myICRC2Instance.approve_transfers(callerPrincipal, approveArgs, false);
     /// ```
     public func approve(caller: Principal, approval: ApproveArgs) : async* ApproveResponse{
-      switch( await* approve_transfers(caller, approval, false)){
+      switch( await* approve_transfers(caller, approval, false,  null)){
           case(#trappable(val)) val;
           case(#awaited(val)) val;
           case(#err(#trappable(err))) D.trap(err);
@@ -735,7 +738,7 @@ module {
     ///
     /// let result = await myICRC2Instance.approve_transfers(callerPrincipal, approveArgs, false);
     /// ```
-    public func approve_transfers(caller: Principal, approval: ApproveArgs, system_override: Bool) : async* Star.Star<ApproveResponse, Text> {
+    public func approve_transfers(caller: Principal, approval: ApproveArgs, system_override: Bool, canApprove : CanApprove) : async* Star.Star<ApproveResponse, Text> {
 
       let from = {owner= caller; subaccount = approval.from_subaccount};
 
@@ -793,7 +796,7 @@ module {
       
 
       
-      switch(testMemo(approval.memo)){
+      switch(environment.icrc1.testMemo(approval.memo)){
         case(?null){};
         case(??val){
           Vec.add(trx,("memo", #Blob(val)));
@@ -869,7 +872,7 @@ module {
             expires_at = approval.expires_at;
           };
 
-          switch(environment.can_approve){
+          switch(canApprove){
             case(null){
               (txMap, ?txTopMap, preNotification);
             };
@@ -981,6 +984,7 @@ module {
               //icrc1 doesn't have a transfer from so we have to fake it
               kind = #transfer;
               from = tokenApprovalNotification.from;
+              calculated_fee = final_fee;
               to = tokenApprovalNotification.spender;
               amount = 0;
               fee = tokenApprovalNotification.fee;
@@ -1063,36 +1067,6 @@ module {
 
     };
 
-    /// # testMemo
-    ///
-    /// Validates the size of the memo field to ensure it doesn't exceed the allowed number of bytes.
-    ///
-    /// ## Parameters
-    ///
-    /// - `val`: `?Blob` - The memo blob to be tested. This parameter can be `null` if no memo is provided.
-    ///
-    /// ## Returns
-    ///
-    /// `??Blob` - An optional optional blob which will return `null` if the blob size exceeds the
-    /// allowed maximum, or the blob itself if it's of a valid size.
-    ///
-    /// ## Remarks
-    ///
-    /// This function compares the size of the memo blob against the `max_memo` limit defined in the ledger's environment state.
-    ///
-    private func testMemo(val : ?Blob) : ??Blob{
-      switch(val){
-        case(null) return ?null;
-        case(?val){
-          let max_memo = environment.icrc1.get_state().max_memo;
-          if(val.size() > max_memo){
-            return null;
-          };
-          return ??val;
-        };
-      };
-    };
-
     /// # testExpiresAt
     ///
     /// Verifies that a given expiration timestamp is not in the past relative to the ledger's current time.
@@ -1122,44 +1096,7 @@ module {
       };
     };
 
-    /// # testCreatedAt
-    ///
-    /// Validates a provided creation timestamp to ensure it's neither too old nor too far into the future,
-    /// relative to the ledger's time and a permissible drift amount.
-    ///
-    /// ## Parameters
-    ///
-    /// - `val`: `?Nat64` - The creation timestamp to be tested. Can be `null` for cases when the timestamp is not provided.
-    /// - `environment`: `Environment` - The environment settings that provide context such as permitted drift and the current ledger time.
-    ///
-    /// ## Returns
-    ///
-    /// A variant indicating success or specific error conditions:
-    /// - `#ok`: `?Nat64` - An optional containing the provided timestamp if valid.
-    /// - `#Err`: `{#TooOld; #InTheFuture: Nat64}` - Error variant indicating if the timestamp is too old or too far in the future.
-    ///
-    /// ## Remarks
-    ///
-    /// This function uses the ledger's permissible drift value from the environment to assess timestamp validity.
-    ///
-    private func testCreatedAt(val : ?Nat64, environment: Environment) : {
-      #ok: ?Nat64;
-      #Err: {#TooOld;#InTheFuture: Nat64};
-      
-    }{
-      switch(val){
-        case(null) return #ok(null);
-        case(?val){
-          if(val > environment.icrc1.get_time64() + environment.icrc1.get_state().permitted_drift){
-            return #Err(#InTheFuture(environment.icrc1.get_time64()));
-          };
-          if(val < environment.icrc1.get_time64() - environment.icrc1.get_state().permitted_drift){
-            return #Err(#TooOld);
-          };
-          return #ok(?val);
-        };
-      };
-    };
+    
 
 
     /// Checks if the specified account is approved for the provided amount.
@@ -1259,7 +1196,7 @@ module {
     ///
     public func cleanUpExpiredApprovals(remaining: Nat) : (){
       //this naievly delete the oldest items until the collection is equal or below the remaining value
-      let memo = Text.encodeUtf8("icrc30_system_clean");
+      let memo = Text.encodeUtf8("icrc2_system_clean");
     
       label clean for(thisItem in Map.entries<(Account,Account), ApprovalInfo>(state.token_approvals)){
 
@@ -1295,7 +1232,7 @@ module {
     ///
     public func cleanUpApprovals(remaining: Nat) : (){
       //this naievly delete the oldest items until the collection is equal or below the remaining value
-      let memo = Text.encodeUtf8("icrc30_system_clean");
+      let memo = Text.encodeUtf8("icrc2_system_clean");
     
       label clean for(thisItem in Map.entries<(Account,Account), ApprovalInfo>(state.token_approvals)){
 
@@ -1340,6 +1277,7 @@ module {
               kind = #transfer;
               from = preNotification.from;
               to = preNotification.spender;
+              calculated_fee = 0;
               amount = 0;
               fee = preNotification.fee;
               memo = preNotification.memo;
@@ -1482,7 +1420,7 @@ module {
     /// ## Remarks
     ///
     /// This function combines validation with actual state changes, fee deductions, and transaction logging. When the transfer is complete, event listeners are notified of the change, and the internal approval state is updated to reflect the new balances.
-    private func transfer_token(caller: Principal, transferFromArgs: TransferFromArgs) : async* Star.Star<TransferFromResponse, Text> {
+    private func transfer_token(caller: Principal, transferFromArgs: TransferFromArgs, canTransferFrom : CanTransferFrom) : async* Star.Star<TransferFromResponse, Text> {
 
         let spender = {owner = caller; subaccount = transferFromArgs.spender_subaccount};
 
@@ -1574,7 +1512,7 @@ module {
 
         var bAwaited = false;
 
-        let(finaltx, finaltxtop, notification) : (Value, ?Value, TransferFromNotification) = switch(environment.can_transfer_from){
+        let(finaltx, finaltxtop, notification) : (Value, ?Value, TransferFromNotification) = switch(canTransferFrom){
           case(null){
             (txMap, ?txTopMap, preNotification);
           };
@@ -1639,6 +1577,7 @@ module {
         debug if(debug_channel.transfer) D.print("ready to move tokens " # debug_show(preNotification));
 
         let final_fee = notification.calculated_fee;
+        var finaltxtop_var = finaltxtop;
 
         let icrc1state = environment.icrc1.get_state();
 
@@ -1649,7 +1588,8 @@ module {
                 from = notification.from;
                 to = notification.to;
                 amount = notification.amount;
-                fee = ?final_fee;
+                fee = notification.fee;
+                calculated_fee = final_fee;
                 memo = notification.memo;
                 created_at_time = notification.created_at_time;
             }
@@ -1661,7 +1601,8 @@ module {
                 from = notification.from;
                 to = notification.to;
                 amount = notification.amount;
-                fee = ?final_fee;
+                fee = notification.fee;
+                calculated_fee = final_fee;
                 memo = notification.memo;
                 created_at_time = notification.created_at_time;
             };
@@ -1670,7 +1611,6 @@ module {
 
             ICRC1.UtilsHelper.transfer_balance(environment.icrc1.get_state(), this_transfer);
 
-            var finaltxtop_var = finaltxtop;
 
             // burn fee
             if(final_fee > 0){
@@ -1680,24 +1620,13 @@ module {
                 };
                 case(?val){
                     
-                  if(fee > 0){
-                    if(icrc1state.fee_collector_emitted){
-                      finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector_block", #Nat(icrc1state.fee_collector_block))){
-                        case(#ok(val)) ?val;
-                        case(#err(err)) return if(bAwaited){
-                          #err(#awaited("unreachable map addition"));
-                        } else {
-                          #err(#trappable("unreachable map addition"));
-                        };
-                      };
-                    } else {
-                      finaltxtop_var := switch(ICRC1.UtilsHelper.insert_map(finaltxtop, "fee_collector", ICRC1.UtilsHelper.accountToValue(val))){
-                        case(#ok(val)) ?val;
-                        case(#err(err)) return if(bAwaited){
-                          #err(#awaited("unreachable map addition"));
-                        } else {
-                          #err(#trappable("unreachable map addition"));
-                        };
+                  finaltxtop_var := switch(environment.icrc1.handleFeeCollector(final_fee, val, this_transfer, finaltxtop_var)){
+                    case(#ok(val)) val;
+                    case(#err(err)){
+                      if(bAwaited){
+                        return #awaited(#Err(#GenericError({error_code= 6453; message=err})));
+                      } else {
+                        return #trappable(#Err(#GenericError({error_code= 6453; message=err})));
                       };
                     };
                   };
@@ -1727,17 +1656,14 @@ module {
 
 
         // store transaction
-        let index = switch(environment.icrc1.get_environment().add_ledger_transaction){
-          case(?add_ledger_transaction){
-            add_ledger_transaction(finaltx, finaltxtop);
-          };
-          case(null){
-            // warning: local ledgers do not support transfer from details and ledger state may be lost.
-            let tx = ICRC1.UtilsHelper.req_to_tx(tx_req, Vec.size(icrc1state.local_transactions));
-
-            environment.icrc1.add_local_ledger(tx);
-          }
-        };
+        let index = environment.icrc1.handleAddRecordToLedger(finaltx,finaltxtop_var, {amount = notification.amount;
+                          calculated_fee = notification.calculated_fee;
+                          created_at_time = notification.created_at_time;
+                          fee = notification.fee;
+                          from = notification.from;
+                          kind = #transfer;
+                          memo = notification.memo;
+                          to = notification.to;});
 
 
         switch(icrc1state.fee_collector){
@@ -1799,12 +1725,12 @@ module {
     ///
     /// Example:
     /// ```motoko
-    /// let transferResult = myICRC30Instance.transfer_from(
+    /// let transferResult = myICRC2Instance.transfer_from(
     ///   caller,
     ///   {
     ///     from = { owner = ownerPrincipal; subaccount = null };
     ///     to = { owner = recipientPrincipal; subaccount = null };
-    ///     token_ids = [789];
+    ///     amount = 789;
     ///     memo = ?Blob.fromArray(Text.toArray("TransferMemo"));
     ///     created_at_time = ?1_615_448_461_000_000_000;
     ///     spender_subaccount = null;
@@ -1813,7 +1739,7 @@ module {
     /// ```
     ///
     public func transfer_from(caller: Principal, transferFromArgs: TransferFromArgs) : async* TransferFromResponse {
-      switch( await* transfer_tokens_from(caller, transferFromArgs)){
+      switch( await* transfer_tokens_from(caller, transferFromArgs, null)){
           case(#trappable(val)) val;
           case(#awaited(val)) val;
           case(#err(#trappable(err))) D.trap(err);
@@ -1848,7 +1774,7 @@ module {
     ///
     /// let result = await myICRC2Instance.transfer_from(spenderPrincipal, transferArgs);
     /// ```
-    public func transfer_tokens_from(caller: Principal, transferFromArgs: TransferFromArgs) : async* Star.Star<TransferFromResponse, Text> {
+    public func transfer_tokens_from(caller: Principal, transferFromArgs: TransferFromArgs, canTransferFrom: CanTransferFrom) : async* Star.Star<TransferFromResponse, Text> {
 
       //check to and from account not equal
       if(account_eq(transferFromArgs.to, transferFromArgs.from)){
@@ -1856,11 +1782,11 @@ module {
       };
 
       //test that the memo is not too large
-      let ?(memo) = testMemo(transferFromArgs.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
+      let ?(memo) = environment.icrc1.testMemo(transferFromArgs.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
 
       
       //make sure the approval is not too old or too far in the future
-      let created_at_time = switch(testCreatedAt(transferFromArgs.created_at_time, environment)){
+      let created_at_time = switch(environment.icrc1.testCreatedAt(transferFromArgs.created_at_time)){
         case(#ok(val)) val;
         case(#Err(#TooOld)) return #trappable(#Err(#TooOld));
         case(#Err(#InTheFuture(val))) return  #trappable(#Err(#CreatedInFuture({ledger_time = environment.icrc1.get_time64()})));
@@ -1869,7 +1795,7 @@ module {
       debug if(debug_channel.transfer) D.print("passed checks and calling token transfer");
 
       
-      return await* transfer_token(caller, transferFromArgs);
+      return await* transfer_token(caller, transferFromArgs, canTransferFrom);
     };
 
     /// # `get_stats`

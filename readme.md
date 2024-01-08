@@ -9,7 +9,7 @@ mops add icrc2-mo
 
 ## Usage
 ```motoko
-import ICRC2 "mo:icrc2.mo";
+import ICRC2 "mo:icrc2-mo/ICRC2";
 
 ## Initialization
 
@@ -27,8 +27,6 @@ stable var icrc1_migration_state = ICRC1.init(ICRC1.initialState() , #v0_1_0(#id
       {
         icrc1 = icrc1();
         get_fee = null;
-        can_approve = null;
-        can_transfer_from = null;
       };
     };
 
@@ -84,31 +82,7 @@ Init args:
 The environment pattern lets you pass dynamic information about your environment to the class.
 
 ```
-  /// TokenApprovalNotification captures the necessary information for a token approval event.
-  public type TokenApprovalNotification = {
-    from : Account;
-    amount : Nat;
-    requested_amount: Nat;
-    expected_allowance : ?Nat;
-    spender : Account;             // Approval is given to an ICRC Account
-    memo :  ?Blob;
-    fee : ?Nat;
-    calculated_fee: Nat;
-    expires_at : ?Nat64;
-    created_at_time : ?Nat64; 
-  };
-
-  /// TransferFromNotification captures the necessary information for a transfer from event.
-  public type TransferFromNotification = {
-    spender: Account; // the subaccount of the caller (used to identify the spender)
-    from : Account;
-    to : Account;
-    memo : ?Blob;
-    amount : Nat;
-    fee : ?Nat;
-    calculated_fee: Nat;
-    created_at_time : ?Nat64;
-  };
+  
 
   // Environment defines the context in which the token ledger operates.
   public type Environment = {
@@ -116,16 +90,7 @@ The environment pattern lets you pass dynamic information about your environment
     icrc1 : ICRC1.ICRC1;
     /// Optional fee calculating function.
     get_fee : ?((State, Environment, ApproveArgs) -> Balance);
-    /// Optional synchronous or asynchronous functions triggered when transferring from an account.
-    can_transfer_from : ?{
-      #Sync : ((trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
-      #Async : ((trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
-    };
-    /// Optional synchronous or asynchronous functions triggered upon approval of a transfer.
-    can_approve : ?{
-      #Sync : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
-      #Async : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
-    };
+    /// TokenApprovalNotification captures the necessary information for a token approval event.
   };
 ```
 ## Deduplication
@@ -156,9 +121,34 @@ The user may assign a function to intercept each transaction type just before it
 
 By returning an #err from these functions you will effectively cancel the transaction and the caller will receive back a #GenericError for that request with the message you provide.
 
-Wire these functions up by including them in your environment object.
+Wire these functions up by including them in your call to transfer_tokens_from and approve_transfer.
 
 ```
+public type TokenApprovalNotification = {
+    from : Account;
+    amount : Nat;
+    requested_amount: Nat;
+    expected_allowance : ?Nat;
+    spender : Account;             // Approval is given to an ICRC Account
+    memo :  ?Blob;
+    fee : ?Nat;
+    calculated_fee: Nat;
+    expires_at : ?Nat64;
+    created_at_time : ?Nat64; 
+  };
+
+  /// TransferFromNotification captures the necessary information for a transfer from event.
+  public type TransferFromNotification = {
+    spender: Account; // the subaccount of the caller (used to identify the spender)
+    from : Account;
+    to : Account;
+    memo : ?Blob;
+    amount : Nat;
+    fee : ?Nat;
+    calculated_fee: Nat;
+    created_at_time : ?Nat64;
+  };
+   
    /// Optional synchronous or asynchronous functions triggered when transferring from an account.
     can_transfer_from : ?{
       #Sync : ((trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);

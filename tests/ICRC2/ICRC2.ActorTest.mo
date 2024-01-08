@@ -150,8 +150,6 @@ module {
                 get_time = ?(func () : Int {test_time});
                 add_ledger_transaction = null;
                 get_fee = null;
-                can_transfer = null;
-                can_transfer_async = null;
               };
             };
             case(?val) val;
@@ -166,8 +164,6 @@ module {
               {
                 icrc1 = icrc1;
                 get_fee = null;
-                can_transfer_from = null;
-                can_approve = null
               };
             };
             case(?val) val;
@@ -340,7 +336,7 @@ module {
                           created_at_time = null;
                         };
 
-                        let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false);
+                        let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false, null);
 
                         D.print("result_test_approval was " # debug_show(result));
                         
@@ -396,7 +392,7 @@ module {
                           spender = {
                             owner = user2.owner;
                             subaccount = ?Blob.fromArray([3,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Nat8.fromNat(thisItem)]);
-                          }}, false));
+                          }}, false, null));
                         };
 
                         D.print("result_test_multiple was " # debug_show(Vec.toArray(results)));
@@ -444,7 +440,7 @@ module {
                           created_at_time = null;
                       };
 
-                      let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false);
+                      let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false, null);
 
                       D.print("result_insufficent was " # debug_show(result));
 
@@ -489,7 +485,7 @@ module {
                     );
 
 
-                    let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false);
+                    let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false, null);
 
                     switch (result) {
                         case (#err(#trappable(_))) {
@@ -529,13 +525,13 @@ module {
                   };
 
                   // First approval
-                  let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false);
+                  let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false, null);
 
                   D.print("result_initial was " # debug_show(result));
 
                   // Second approval with reset
                   let resetApprovalAmount = 50 * e8s;
-                  let result2 = await* icrc2.approve_transfers(user1.owner, {approvalArgs with amount = resetApprovalAmount}, false);
+                  let result2 = await* icrc2.approve_transfers(user1.owner, {approvalArgs with amount = resetApprovalAmount}, false, null);
 
                   D.print("result_overwrite was " # debug_show(result2));
 
@@ -576,7 +572,7 @@ module {
                       fee = null;
                       memo = null;
                       created_at_time = null;
-                  }, true);
+                  }, true, null);
 
                   D.print("result init  was " # debug_show(resultinit));
 
@@ -590,7 +586,7 @@ module {
                       fee = null;
                       memo = null;
                       created_at_time = null;
-                  }, false);
+                  }, false, null);
 
                   D.print("result expected  was " # debug_show(result));
 
@@ -635,7 +631,7 @@ module {
                       fee = null;
                       memo = null;
                       created_at_time = null;
-                  }, false);
+                  }, false, null);
 
                   D.print("result total supply limit " # debug_show(result));
 
@@ -680,7 +676,7 @@ module {
                       fee = null;
                       memo = null;
                       created_at_time = null;
-                  }, false);
+                  }, false, null);
 
                   D.print("result fixed limit " # debug_show(result));
 
@@ -713,7 +709,7 @@ module {
                       fee = null;
                       memo = null;
                       created_at_time = null;
-                  }, true);
+                  }, true, null);
 
                   test_time := Time.now() + 1; // 1 hour ago
 
@@ -727,7 +723,7 @@ module {
                       fee = null;
                       memo = null;
                       created_at_time = null;
-                  });
+                  }, null);
 
                   assertAllTrue([
                       allowance.allowance == 0, // Allowance should now be zero
@@ -763,7 +759,7 @@ module {
                     created_at_time = null;
                 };
 
-                let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false);
+                let result = await* icrc2.approve_transfers(user1.owner, approvalArgs, false, null);
 
                  D.print("result bad fee " # debug_show(result));
 
@@ -811,7 +807,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }, false);
+                    }, false, null);
 
                     D.print("transfer From balance after approval  " # debug_show(icrc1.balance_of(user1)));
 
@@ -827,7 +823,7 @@ module {
 
                     
 
-                    let transfer_result = await* icrc2.transfer_tokens_from(user2.owner, transferFromArgs);
+                    let transfer_result = await* icrc2.transfer_tokens_from(user2.owner, transferFromArgs, null);
 
                     D.print("transfer From balance after transfer  " # debug_show(icrc1.balance_of(user1)));
 
@@ -879,7 +875,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }, false);
+                    }, false, null);
 
                     let transferFromArgs = {
                         spender_subaccount = user2.subaccount;
@@ -891,7 +887,7 @@ module {
                         created_at_time = null;
                     };
 
-                    let transfer_result = await* icrc2.transfer_tokens_from(user2.owner, transferFromArgs);
+                    let transfer_result = await* icrc2.transfer_tokens_from(user2.owner, transferFromArgs, null);
 
                     switch (transfer_result) {
                         case (#trappable(#Ok(_)))
@@ -928,7 +924,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }, false);
+                    }, false, null);
 
                     let transferFromArgs = {
                         spender_subaccount = user2.subaccount;
@@ -940,7 +936,7 @@ module {
                         created_at_time = null;
                     };
 
-                    let transfer_result = await* icrc2.transfer_tokens_from(user2.owner, transferFromArgs);
+                    let transfer_result = await* icrc2.transfer_tokens_from(user2.owner, transferFromArgs, null);
 
                     switch (transfer_result) {
                         case (#trappable(#Ok(_)))
@@ -969,7 +965,7 @@ module {
                     });
 
 
-                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false);
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
 
                     let firstTransferResponse = await* icrc2.transfer_tokens_from(user2.owner, {
                         spender_subaccount = user2.subaccount;
@@ -979,7 +975,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    });
+                    }, null);
 
                     D.print("firstTransferResponse " # debug_show(firstTransferResponse));
 
@@ -993,7 +989,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }); // 10 tokens more than approved
+                    }, null); // 10 tokens more than approved
 
                      D.print("secondTransferResponse " # debug_show(secondTransferResponse));
                     
@@ -1021,7 +1017,7 @@ module {
                         created_at_time = null;
                     });
 
-                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false);
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
 
                     let balanceBeforeTransfer = icrc1.balance_of(user1);
 
@@ -1035,7 +1031,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }); // Exact approved amount
+                    }, null); // Exact approved amount
 
                      D.print("secondTransferResponse " # debug_show(transferResponse));
 
@@ -1061,15 +1057,15 @@ module {
                         created_at_time = null;
                     });
 
-                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false);
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
 
                     let approveResponse2 = await* icrc2.approve_transfers(user1.owner, {approveFor100Tokens with
-                     expires_at = ?(Nat64.fromNat(Int.abs(test_time + ONE_DAY_SECONDS)))}, false);
+                     expires_at = ?(Nat64.fromNat(Int.abs(test_time + ONE_DAY_SECONDS)))}, false, null);
 
                      D.print("approveResponse2 " # debug_show(approveResponse2));
 
                      let approveResponse3 = await* icrc2.approve_transfers(user1.owner, {approveFor100Tokens with
-                     expires_at = ?(Nat64.fromNat(Int.abs(test_time - ONE_DAY_SECONDS)))}, false);
+                     expires_at = ?(Nat64.fromNat(Int.abs(test_time - ONE_DAY_SECONDS)))}, false, null);
 
                      D.print("approveResponse3 " # debug_show(approveResponse3));
 
@@ -1084,7 +1080,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }); // Attempt to transfer after allowance expiration
+                    }, null); // Attempt to transfer after allowance expiration
 
                     D.print("transferResponse expired " # debug_show(transferResponse));
 
@@ -1111,7 +1107,7 @@ module {
                         created_at_time = null;
                     });
 
-                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false);
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
 
                     D.print("approveResponse " # debug_show(approveResponse));
 
@@ -1119,7 +1115,7 @@ module {
 
                     test_time += 5;
 
-                    let approveResponse2 = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false);
+                    let approveResponse2 = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
 
                     D.print("approveResponse2 " # debug_show(approveResponse2));
 
@@ -1135,7 +1131,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    });
+                    }, null);
 
                     D.print("firstTransferResponse " # debug_show(firstTransferResponse));
 
@@ -1151,7 +1147,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }); // Same args as first transfer, should be a duplicate
+                    }, null); // Same args as first transfer, should be a duplicate
 
                     D.print("secondTransferResponse " # debug_show(secondTransferResponse));
 
@@ -1187,7 +1183,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }, false);
+                    }, false, null);
 
                     // Retrieve the allowance for user2
                     let allowance = icrc2.allowance(user2, user1, false);
@@ -1231,7 +1227,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }, false);
+                    }, false, null);
 
                     // Assume `icrc2_transfer_from` is called here with some amount
                     let transferResponse = await* icrc2.transfer_tokens_from(user2.owner,  {
@@ -1242,7 +1238,7 @@ module {
                         fee = null;
                         memo = null;
                         created_at_time = null;
-                    }); // Attempt to transfer after allowance expiration
+                    }, null); // Attempt to transfer after allowance expiration
 
 
                     // Check allowance after the transfer
@@ -1254,6 +1250,281 @@ module {
                     let expectedAllowance = (100 * e8s) - transferAmount - base_fee; // Replace `transferAmount` with the actual transferred amount
                     assertTrue(allowanceAfterTransfer.allowance == expectedAllowance);
                 },
+            ),
+            it(
+                "should allow approve sync cancle",
+                do {
+
+                    
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, ?#Sync(externalCanApproveFalseSync));
+
+                     D.print("approveResponse false sync " # debug_show(approveResponse));
+                    let #trappable(#Err(#GenericError(approveResponseResult))) = approveResponse;
+                    
+                    
+
+                    assertAllTrue([
+                        approveResponseResult.error_code == 100,
+                    ]);
+                }
+            ),
+            it(
+                "should allow approve async cancle",
+                do {
+
+                    
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, ?#Async(externalCanApproveFalseAsync));
+
+                     D.print("approveResponse false sync " # debug_show(approveResponse));
+                    let #awaited(#Err(#GenericError(approveResponseResult))) = approveResponse;
+
+                    assertAllTrue([
+                        approveResponseResult.error_code == 100,
+                    ]);
+                }
+            ),
+            it(
+                "should allow approve sync update",
+                do {
+
+                    
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, ?#Sync(externalCanApproveUpdateSync));
+
+                     D.print("approveResponse false sync " # debug_show(approveResponse));
+                    
+
+                    // Check allowance after the transfer
+                    let allowanceAfterApprove = icrc2.allowance(user2, user1, false);
+                    
+                    
+
+                    assertAllTrue([
+                        allowanceAfterApprove.allowance == 2,
+                    ]);
+                }
+            ),
+            it(
+                "should allow approve async update",
+                do {
+
+                     
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, ?#Async(externalCanApproveUpdateAsync));
+
+                    // Check allowance after the transfer
+                    let allowanceAfterApprove = icrc2.allowance(user2, user1, false);
+                    
+
+                    assertAllTrue([
+                        allowanceAfterApprove.allowance == 2,
+                    ]);
+                }
+            ),
+
+            it(
+                "should allow transfer from sync cancle",
+                do {
+
+                    
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
+
+                     D.print("transferfrom approveResponse false sync " # debug_show(approveResponse));
+
+                    // Assume `icrc2_transfer_from` is called here with some amount
+                    let transferResponse = await* icrc2.transfer_tokens_from(user2.owner,  {
+                        spender_subaccount = user2.subaccount;
+                        from = user1;
+                        to = user3;
+                        amount = 1; // Transfer amount is more than user1's balance
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, ?#Sync(externalCanTransferFromFalseSync)); // Attempt to transfer after allowance expiration
+
+                    D.print("transferfrom transfer false async " # debug_show(transferResponse));
+
+
+
+                    let #trappable(#Err(#GenericError(transferResponseResult))) = transferResponse;
+                    
+                    
+
+                    assertAllTrue([
+                        transferResponseResult.error_code == 100,
+                    ]);
+                }
+            ),
+            it(
+                "should allow approve async cancle",
+                do {
+
+                    
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
+
+                     D.print("transferfrom approveResponse false async " # debug_show(approveResponse));
+                    
+                    // Assume `icrc2_transfer_from` is called here with some amount
+                    let transferResponse = await* icrc2.transfer_tokens_from(user2.owner,  {
+                        spender_subaccount = user2.subaccount;
+                        from = user1;
+                        to = user3;
+                        amount = 1; // Transfer amount is more than user1's balance
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, ?#Async(externalCanTransferFromFalseAsync)); // Attempt to transfer after allowance expiration
+
+                    D.print("transferfrom transfer false async " # debug_show(approveResponse));
+
+                    let #awaited(#Err(#GenericError(transferResponseResult))) = transferResponse;
+
+
+                    assertAllTrue([
+                        transferResponseResult.error_code == 100,
+                    ]);
+                }
+            ),
+            it(
+                "should allow approve sync update",
+                do {
+
+                    
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
+
+                     D.print("approveResponse update sync " # debug_show(approveResponse));
+
+                     // Check allowance after the transfer
+                    let allowanceAfterApprove = icrc2.allowance(user2, user1, false);
+
+                     // Assume `icrc2_transfer_from` is called here with some amount
+                    let transferResponse = await* icrc2.transfer_tokens_from(user2.owner,  {
+                        spender_subaccount = user2.subaccount;
+                        from = user1;
+                        to = user3;
+                        amount = 1; // Transfer amount is more than user1's balance
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, ?#Sync(externalCanTransferFromUpdateSync)); // Attempt to transfer after allowance expiration
+
+                    D.print("transferfrom transferResponse update sync " # debug_show(approveResponse));
+                    
+
+                    let balanceAfterTransfer = icrc1.balance_of(user1);
+
+                     D.print("balanceAfterTransfer update async " # debug_show(balanceAfterTransfer,  (500 * e8s) - base_fee - base_fee - 2));
+                    
+                    
+
+                    assertAllTrue([
+                        balanceAfterTransfer == (500 * e8s) - base_fee - base_fee - 2,
+                    ]);
+                }
+            ),
+            it(
+                "should allow approve async update",
+                do {
+
+                     
+                    let (icrc1, icrc2)  = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 500 * e8s; // Mint lesser tokens to user1
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
+
+                    D.print("approveResponse update async " # debug_show(approveResponse));
+
+                    // Assume `icrc2_transfer_from` is called here with some amount
+                    let transferResponse = await* icrc2.transfer_tokens_from(user2.owner,  {
+                        spender_subaccount = user2.subaccount;
+                        from = user1;
+                        to = user3;
+                        amount = 1; // Transfer amount is more than user1's balance
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, ?#Async(externalCanTransferFromUpdateAsync)); // Attempt to transfer after allowance expiration
+
+                    D.print("transferfrom transferResponse update async " # debug_show(approveResponse));
+
+                    // Check allowance after the transfer
+                    let balanceAfterTransfer = icrc1.balance_of(user1);
+
+                    D.print("balanceAfterTransfer update async " # debug_show(balanceAfterTransfer,  (500 * e8s) - base_fee - base_fee - 2));
+                    
+                    
+
+                    assertAllTrue([
+                        balanceAfterTransfer == (500 * e8s) - base_fee - base_fee - 2,
+                    ]);
+                }
             ),
             
             

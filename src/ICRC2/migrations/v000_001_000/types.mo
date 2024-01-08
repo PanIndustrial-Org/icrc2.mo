@@ -81,15 +81,18 @@ module {
     /// Optional fee calculating function.
     get_fee : ?((State, Environment, ApproveArgs) -> Balance);
     /// Optional synchronous or asynchronous functions triggered when transferring from an account.
-    can_transfer_from : ?{
+    
+  };
+
+  public type CanTransferFrom = ?{
       #Sync : ((trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
       #Async : ((trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
     };
+
     /// Optional synchronous or asynchronous functions triggered upon approval of a transfer.
-    can_approve : ?{
-      #Sync : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
-      #Async : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
-    };
+  public type CanApprove = ?{
+    #Sync : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
+    #Async : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
   };
 
   /// Value is a generic type capable of representing different values in a shared data structure.
