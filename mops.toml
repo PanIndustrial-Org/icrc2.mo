@@ -9,7 +9,7 @@ vector = "0.2.0"
 star = "0.1.1"
 rep-indy-hash = "0.1.1"
 account = "1.0.1"
-icrc1-mo = "0.0.11"
+icrc1-mo = "0.0.12"
 
 [dev-dependencies]
 test = "1.2.0"
