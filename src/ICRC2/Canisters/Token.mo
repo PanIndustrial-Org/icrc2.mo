@@ -1,15 +1,9 @@
 ///This is a naieve token implementation and shows the minimum possible implementation. It does not provide archiving and will not scale.
 ///Please see https://github.com/PanIndustrial-Org/ICRC_fungible for a full featured implementation
 
-import Array "mo:base/Array";
-import D "mo:base/Debug";
-import ExperimentalCycles "mo:base/ExperimentalCycles";
-import Iter "mo:base/Iter";
-import Option "mo:base/Option";
-import Principal "mo:base/Principal";
-import Time "mo:base/Time";
 
-import Vec "mo:vector";
+import ExperimentalCycles "mo:base/ExperimentalCycles";
+import Principal "mo:base/Principal";
 
 import ICRC1 "mo:icrc1-mo/ICRC1";
 import ICRC2 "..";
@@ -32,7 +26,7 @@ shared ({ caller = _owner }) actor class Token  (
 
     let icrc2_args : ICRC2.InitArgs = init_args2;
 
-    stable let icrc1_migration_state = ICRC1.init(ICRC1.initialState(), #v0_1_0(#id),?init_args1, _owner);
+    stable let icrc1_migration_state = ICRC1.init(ICRC1.initialState(), #v0_1_0(#id), ?icrc1_args, _owner);
 
     let #v0_1_0(#data(icrc1_state_current)) = icrc1_migration_state;
 
@@ -64,7 +58,7 @@ shared ({ caller = _owner }) actor class Token  (
 
 
 
-    stable let icrc2_migration_state = ICRC2.init(ICRC2.initialState(), #v0_1_0(#id),?init_args2, _owner);
+    stable let icrc2_migration_state = ICRC2.init(ICRC2.initialState(), #v0_1_0(#id),?icrc2_args, _owner);
 
     let #v0_1_0(#data(icrc2_state_current)) = icrc2_migration_state;
 
@@ -158,7 +152,7 @@ shared ({ caller = _owner }) actor class Token  (
     // Deposit cycles into this canister.
     public shared func deposit_cycles() : async () {
         let amount = ExperimentalCycles.available();
-        let accepted = ExperimentalCycles.accept(amount);
+        let accepted = ExperimentalCycles.accept<system>(amount);
         assert (accepted == amount);
     };
 };

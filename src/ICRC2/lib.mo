@@ -1,22 +1,14 @@
-import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import D "mo:base/Debug";
-import EC "mo:base/ExperimentalCycles";
-import Float "mo:base/Float";
-import Int "mo:base/Int";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat64 "mo:base/Nat64";
-import Nat8 "mo:base/Nat8";
-import Option "mo:base/Option";
-import Order "mo:base/Order";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Timer "mo:base/Timer";
 
 import ICRC1 "mo:icrc1-mo/ICRC1/";
-import Itertools "mo:itertools/Iter";
 import RepIndy "mo:rep-indy-hash";
 import Star "mo:star/star";
 import Vec "mo:vector";
@@ -320,12 +312,11 @@ module {
       /// Returns:
       /// `MetaData`: A record containing all metadata entries for this ledger.
       public func metadata() : [ICRC1.MetaDatum] {
-         let md = switch(state.ledger_info.metadata){
-          case(?val)val;
+         switch(state.ledger_info.metadata){
+          case(?val){};
           case(null) {
             let newdata = init_metadata();
             state.ledger_info.metadata := ?newdata;
-            newdata
           };
          };
 
@@ -361,7 +352,6 @@ module {
             ignore Map.put(results, Map.thash, thisItem.0, thisItem);
           };
 
-          let metadata = Vec.new<ICRC1.MetaDatum>();
           ignore Map.put(results, Map.thash, "icrc2:max_approvals_per_account",("icrc2:max_approvals_per_account", #Nat(state.ledger_info.max_approvals_per_account)));
           ignore Map.put(results, Map.thash,"icrc2:max_approvals", ("icrc2:max_approvals", #Nat(state.ledger_info.max_approvals)));
           ignore Map.put(results, Map.thash,"icrc2:settle_to_approvals", ("icrc2:settle_to_approvals", #Nat(state.ledger_info.settle_to_approvals)));
@@ -520,16 +510,15 @@ module {
             };
 
             //check the expected allowance
-            let currentApprovalAmount = switch(Map.get(state.token_approvals, apphash, (from, approval.spender))){
-              case(null) 0;
+            switch(Map.get(state.token_approvals, apphash, (from, approval.spender))){
+              case(null) {};
               case(?val) {
                 switch(approval.expected_allowance){
-                  case(null) val.amount;
+                  case(null) {};
                   case(?expected){
                     if(expected != val.amount){
                       return #trappable(#Err(#AllowanceChanged({current_allowance = val.amount})));
                     };
-                    val.amount;
                   }
                 };
               };
@@ -560,8 +549,8 @@ module {
             };
 
             //make sure the approval is not too old or too far in the future
-            let created_at_time = switch(environment.icrc1.testCreatedAt(approval.created_at_time)){
-              case(#ok(val)) val;
+            switch(environment.icrc1.testCreatedAt(approval.created_at_time)){
+              case(#ok(val)) {};
               case(#Err(#TooOld)) return #trappable(#Err(#TooOld));
               case(#Err(#InTheFuture(val))) return  #trappable(#Err(#CreatedInFuture({ledger_time = environment.icrc1.get_time64()})));
             };
@@ -645,8 +634,8 @@ module {
       };
 
       //make sure the transfer from is not too old or too far in the future
-      let created_at_time = switch(environment.icrc1.testCreatedAt(transfer.created_at_time)){
-        case(#ok(val)) val;
+      switch(environment.icrc1.testCreatedAt(transfer.created_at_time)){
+        case(#ok(val)) {};
         case(#Err(#TooOld)) return (#ok(#Err(#TooOld)), null);
         case(#Err(#InTheFuture(val))) return  (#ok(#Err(#CreatedInFuture({ledger_time = environment.icrc1.get_time64()}))), null);
       };
@@ -831,6 +820,7 @@ module {
       Vec.add(trx,("op", #Text("approve")));
 
       Vec.add(trxtop,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
+      Vec.add(trxtop,("type", #Text("1approve")));
 
       Vec.add(trx,("from", ICRC1.UtilsHelper.accountToValue({owner = caller; subaccount = approval.from_subaccount})));
 
@@ -1196,7 +1186,6 @@ module {
     ///
     public func cleanUpExpiredApprovals(remaining: Nat) : (){
       //this naievly delete the oldest items until the collection is equal or below the remaining value
-      let memo = Text.encodeUtf8("icrc2_system_clean");
     
       label clean for(thisItem in Map.entries<(Account,Account), ApprovalInfo>(state.token_approvals)){
 
@@ -1241,14 +1230,11 @@ module {
         ignore Map.remove(state.token_approvals, apphash, thisItem.0);
         //unindex
         unIndex(thisItem.0.0, thisItem.0.1);
-
-
-        
-        let memo = Text.encodeUtf8("icrc2_system_clean");
           
         let trx = Vec.new<(Text, Value)>();
         let trxtop = Vec.new<(Text, Value)>();
         Vec.add(trx, ("op", #Text("approve")));
+        Vec.add(trxtop,("type", #Text("1approve")));
         Vec.add(trxtop, ("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
         Vec.add(trx, ("from", ICRC1.UtilsHelper.accountToValue(thisItem.0.0)));
         Vec.add(trx, ("spender", ICRC1.UtilsHelper.accountToValue(thisItem.0.1)));
@@ -1420,7 +1406,7 @@ module {
     /// ## Remarks
     ///
     /// This function combines validation with actual state changes, fee deductions, and transaction logging. When the transfer is complete, event listeners are notified of the change, and the internal approval state is updated to reflect the new balances.
-    private func transfer_token(caller: Principal, transferFromArgs: TransferFromArgs, canTransferFrom : CanTransferFrom) : async* Star.Star<TransferFromResponse, Text> {
+    private func transfer_token<system>(caller: Principal, transferFromArgs: TransferFromArgs, canTransferFrom : CanTransferFrom) : async* Star.Star<TransferFromResponse, Text> {
 
         let spender = {owner = caller; subaccount = transferFromArgs.spender_subaccount};
 
@@ -1475,6 +1461,7 @@ module {
 
         Vec.add(trx,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
         Vec.add(trx,("op", #Text("xfer")));
+        Vec.add(trxtop,("type", #Text("1xfer")));
         
         Vec.add(trx,("from", ICRC1.UtilsHelper.accountToValue(transferFromArgs.from)));
         Vec.add(trx,("to", ICRC1.UtilsHelper.accountToValue(transferFromArgs.to)));
@@ -1689,11 +1676,9 @@ module {
           ignore Map.put<Blob, (Nat64,Nat)>(environment.icrc1.get_state().recent_transactions, Map.bhash, pretrxhash, (environment.icrc1.get_time64(), index));
         };
 
-
         for(thisItem in Vec.vals(transfer_from_listeners)){
           thisItem.1(notification, index);
         };
-
 
         debug if(debug_channel.approve) D.print("cleaning " );
         environment.icrc1.cleanUpRecents();
@@ -1702,7 +1687,7 @@ module {
         switch(icrc1state.cleaning_timer){
           case(null){ //only need one active timer
             debug if(debug_channel.transfer) D.print("setting clean up timer");
-            icrc1state.cleaning_timer := ?Timer.setTimer(#seconds(0), environment.icrc1.checkAccounts);
+            icrc1state.cleaning_timer := ?Timer.setTimer<system>(#seconds(0), environment.icrc1.checkAccounts);
           };
           case(_){}
         };
@@ -1738,8 +1723,8 @@ module {
     /// );
     /// ```
     ///
-    public func transfer_from(caller: Principal, transferFromArgs: TransferFromArgs) : async* TransferFromResponse {
-      switch( await* transfer_tokens_from(caller, transferFromArgs, null)){
+    public func transfer_from<system>(caller: Principal, transferFromArgs: TransferFromArgs) : async* TransferFromResponse {
+      switch( await* transfer_tokens_from<system>(caller, transferFromArgs, null)){
           case(#trappable(val)) val;
           case(#awaited(val)) val;
           case(#err(#trappable(err))) D.trap(err);
@@ -1774,7 +1759,7 @@ module {
     ///
     /// let result = await myICRC2Instance.transfer_from(spenderPrincipal, transferArgs);
     /// ```
-    public func transfer_tokens_from(caller: Principal, transferFromArgs: TransferFromArgs, canTransferFrom: CanTransferFrom) : async* Star.Star<TransferFromResponse, Text> {
+    public func transfer_tokens_from<system>(caller: Principal, transferFromArgs: TransferFromArgs, canTransferFrom: CanTransferFrom) : async* Star.Star<TransferFromResponse, Text> {
 
       //check to and from account not equal
       if(account_eq(transferFromArgs.to, transferFromArgs.from)){
@@ -1786,8 +1771,8 @@ module {
 
       
       //make sure the approval is not too old or too far in the future
-      let created_at_time = switch(environment.icrc1.testCreatedAt(transferFromArgs.created_at_time)){
-        case(#ok(val)) val;
+      switch(environment.icrc1.testCreatedAt(transferFromArgs.created_at_time)){
+        case(#ok(val)) {};
         case(#Err(#TooOld)) return #trappable(#Err(#TooOld));
         case(#Err(#InTheFuture(val))) return  #trappable(#Err(#CreatedInFuture({ledger_time = environment.icrc1.get_time64()})));
       };
@@ -1795,7 +1780,7 @@ module {
       debug if(debug_channel.transfer) D.print("passed checks and calling token transfer");
 
       
-      return await* transfer_token(caller, transferFromArgs, canTransferFrom);
+      return await* transfer_token<system>(caller, transferFromArgs, canTransferFrom);
     };
 
     /// # `get_stats`

@@ -160,6 +160,7 @@ module {
   public type UpdateLedgerInfoRequest = {
     #MaxApprovalsPerAccount : Nat;
     #MaxApprovals : Nat;
+    #MaxAllowance : ?MaxAllowance;
     #SettleToApprovals : Nat;
     #Fee : Fee;
   };
