@@ -867,7 +867,7 @@ module {
               (txMap, ?txTopMap, preNotification);
             };
             case(?#Sync(remote_func)){
-              switch(remote_func(txMap, ?txTopMap, preNotification)){
+              switch(remote_func<system>(txMap, ?txTopMap, preNotification)){
                 case(#ok(val)) val;
                 case(#err(tx)){
                   return #trappable(#Err(#GenericError({error_code = 100; message=tx})));
@@ -1038,13 +1038,13 @@ module {
   
   
       for(thisEvent in Vec.vals(token_approved_listeners)){
-        thisEvent.1(tokenApprovalNotification, transaction_id);
+        thisEvent.1<system>(tokenApprovalNotification, transaction_id);
       };
       
 
       environment.icrc1.cleanUpRecents();
       debug if(debug_channel.approve) D.print("Done Cleaning ");
-      cleanUpApprovalsRoutine();
+      cleanUpApprovalsRoutine<system>();
       debug if(debug_channel.approve) D.print("Done clean up approvals " );
 
       debug if(debug_channel.approve) D.print("Finished putting approval " # debug_show(approval));
@@ -1133,12 +1133,12 @@ module {
     /// ## Remarks
     ///
     /// This routine is invoked to manage the state of the ledger's approvals. If the map of token approvals exceeds the maximum configured approval count, it first attempts to delete expired approvals and, if necessary, other approvals until the count is at the desired threshold.
-    public func cleanUpApprovalsRoutine() : () {
+    public func cleanUpApprovalsRoutine<system>() : () {
       if(Map.size(state.token_approvals) > state.ledger_info.max_approvals){
         cleanUpExpiredApprovals(state.ledger_info.settle_to_approvals);
       };
       if(Map.size(state.token_approvals) > state.ledger_info.max_approvals){
-        cleanUpApprovals(state.ledger_info.settle_to_approvals);
+        cleanUpApprovals<system>(state.ledger_info.settle_to_approvals);
       };
     };
 
@@ -1219,7 +1219,7 @@ module {
     /// This method does not consider the expiry of approvals and should be used to reduce the total number of current approvals
     /// to a manageable size, regardless of their expiration status.
     ///
-    public func cleanUpApprovals(remaining: Nat) : (){
+    public func cleanUpApprovals<system>(remaining: Nat) : (){
       //this naievly delete the oldest items until the collection is equal or below the remaining value
       let memo = Text.encodeUtf8("icrc2_system_clean");
     
@@ -1277,7 +1277,7 @@ module {
         };
 
         for(thisEvent in Vec.vals(token_approved_listeners)){
-          thisEvent.1(preNotification, transaction_id);
+          thisEvent.1<system>(preNotification, transaction_id);
         };
           
 
@@ -1382,7 +1382,7 @@ module {
     ///     - from: `?Account` - The previous owner's account.
     ///     - to: `Account` - The new owner's account.
     ///     - trx_id: `Nat` - The unique identifier for the transfer transaction.
-    private func token_transferred(transfer: Transaction, trx_id: Nat) : (){
+    private func token_transferred<system>(transfer: Transaction, trx_id: Nat) : (){
       //todo: nothing now but maybe we remove approvals of balances that go to 0?
     };
 
@@ -1504,7 +1504,7 @@ module {
             (txMap, ?txTopMap, preNotification);
           };
           case(?#Sync(remote_func)){
-              switch(remote_func(txMap, ?txTopMap, preNotification)){
+              switch(remote_func<system>(txMap, ?txTopMap, preNotification)){
                 case(#ok(val)) val;
                 case(#err(tx)){
                   return #trappable(#Err(#GenericError({error_code = 100; message=tx})));
@@ -1677,7 +1677,7 @@ module {
         };
 
         for(thisItem in Vec.vals(transfer_from_listeners)){
-          thisItem.1(notification, index);
+          thisItem.1<system>(notification, index);
         };
 
         debug if(debug_channel.approve) D.print("cleaning " );

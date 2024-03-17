@@ -177,7 +177,7 @@ module {
           (icrc1, icrc2);
         };
 
-        let externalCanTransferFromFalseSync = func (trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification), Text> {
+        let externalCanTransferFromFalseSync = func <system>(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification), Text> {
 
             
                 return #err("always false");
@@ -187,7 +187,7 @@ module {
             
         };
 
-        let externalCanTransferFromFalseAsync = func (trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification) : async* Star.Star<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification), Text> {
+        let externalCanTransferFromFalseAsync = func <system>(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification) : async* Star.Star<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification), Text> {
             // This mock externalCanTransfer function always returns false,
             // indicating the transfer should not proceed.
             let fake = await Fake.Fake();
@@ -197,7 +197,7 @@ module {
             
         };
 
-        let externalCanApproveFalseSync = func (trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification), Text> {
+        let externalCanApproveFalseSync = func <system>(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification), Text> {
 
             
                 return #err("always false");
@@ -217,7 +217,7 @@ module {
             
         };
 
-        let externalCanTransferFromUpdateSync = func (trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification), Text> {
+        let externalCanTransferFromUpdateSync = func <system>(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TransferFromNotification), Text> {
             let results = Vector.new<(Text,ICRC1.Value)>();
 
             switch(trx){
@@ -261,7 +261,7 @@ module {
         };
 
 
-         let externalCanApproveUpdateSync = func (trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification), Text> {
+         let externalCanApproveUpdateSync = func <system>(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification) : Result.Result<(trx: ICRC1.Value, trxtop: ?ICRC1.Value, notification: ICRC2.TokenApprovalNotification), Text> {
             let results = Vector.new<(Text,ICRC1.Value)>();
 
             switch(trx){

@@ -85,14 +85,14 @@ module {
   };
 
   public type CanTransferFrom = ?{
-      #Sync : ((trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
-      #Async : ((trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
+      #Sync : (<system>(trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
+      #Async : (<system>(trx: Value, trxtop: ?Value, notification: TransferFromNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TransferFromNotification), Text>);
     };
 
     /// Optional synchronous or asynchronous functions triggered upon approval of a transfer.
   public type CanApprove = ?{
-    #Sync : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
-    #Async : ((trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
+    #Sync : (<system>(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> Result.Result<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
+    #Async : (<system>(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification) -> async* Star.Star<(trx: Value, trxtop: ?Value, notification: TokenApprovalNotification), Text>);
   };
 
   /// Value is a generic type capable of representing different values in a shared data structure.
@@ -306,10 +306,10 @@ module {
   public let apphash = ( approvalHash32, approvalEquals);
 
   /// TransferFromListener is a callback type used to listen to transfer events.
-  public type TransferFromListener = (TransferFromNotification, trxid: Nat) -> ();
+  public type TransferFromListener = <system>(TransferFromNotification, trxid: Nat) -> ();
 
   /// TokenApprovalListener is a callback type used to listen to approval events.
-  public type TokenApprovalListener = (TokenApprovalNotification, trxid: Nat) -> ();
+  public type TokenApprovalListener = <system>(TokenApprovalNotification, trxid: Nat) -> ();
 
   /// LedgerInfo contains mutable configurations for the ledger.
   public type LedgerInfo = {
