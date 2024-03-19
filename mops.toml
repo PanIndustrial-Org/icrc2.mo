@@ -9,7 +9,7 @@ vector = "0.2.0"
 star = "0.1.1"
 rep-indy-hash = "0.1.1"
 account = "1.0.1"
-icrc1-mo = "0.0.14"
+icrc1-mo = "0.0.15"
 
 [dev-dependencies]
 test = "1.2.0"
@@ -18,7 +18,7 @@ matchers = "https://github.com/kritzcreek/motoko-matchers#v1.3.0@3dac8a071b69e4e
 
 [package]
 name = "icrc2-mo"
-version = "0.0.12"
+version = "0.0.13"
 description = "icrc2 for motoko"
 repository = "https://github.com/PanIndustrial-Org/icrc2.mo"
 keywords = [ "icrc2", "fungible", "token", "standard", "dfinity" ]

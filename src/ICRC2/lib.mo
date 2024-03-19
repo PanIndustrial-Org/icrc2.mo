@@ -820,7 +820,7 @@ module {
       Vec.add(trx,("op", #Text("approve")));
 
       Vec.add(trxtop,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
-      Vec.add(trxtop,("type", #Text("1approve")));
+      Vec.add(trxtop,("btype", #Text("2approve")));
 
       Vec.add(trx,("from", ICRC1.UtilsHelper.accountToValue({owner = caller; subaccount = approval.from_subaccount})));
 
@@ -1234,7 +1234,7 @@ module {
         let trx = Vec.new<(Text, Value)>();
         let trxtop = Vec.new<(Text, Value)>();
         Vec.add(trx, ("op", #Text("approve")));
-        Vec.add(trxtop,("type", #Text("1approve")));
+        Vec.add(trxtop,("btype", #Text("2approve")));
         Vec.add(trxtop, ("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
         Vec.add(trx, ("from", ICRC1.UtilsHelper.accountToValue(thisItem.0.0)));
         Vec.add(trx, ("spender", ICRC1.UtilsHelper.accountToValue(thisItem.0.1)));
@@ -1461,7 +1461,7 @@ module {
 
         Vec.add(trx,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
         Vec.add(trx,("op", #Text("xfer")));
-        Vec.add(trxtop,("type", #Text("1xfer")));
+        Vec.add(trxtop,("btype", #Text("2xfer")));
         
         Vec.add(trx,("from", ICRC1.UtilsHelper.accountToValue(transferFromArgs.from)));
         Vec.add(trx,("to", ICRC1.UtilsHelper.accountToValue(transferFromArgs.to)));
