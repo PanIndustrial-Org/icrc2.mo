@@ -20,7 +20,6 @@
         "replica": {
           "subnet_type": "system"
       }
-    },
-    "dfx": "0.18.0"
+    }
     
 }

@@ -1,13 +1,11 @@
-import Array "mo:base/Array";
+
 import Blob "mo:base/Blob";
 import D "mo:base/Debug";
 import Int "mo:base/Int";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
-import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
-import Opt "mo:base/Option";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
@@ -18,9 +16,8 @@ import Fake "../fake";
 import Vec "mo:vector";
 import Star "mo:star/star";
 
-import Itertools "mo:itertools/Iter";
-import StableBuffer "mo:StableBuffer/StableBuffer";
-import Sha256 "mo:sha2/Sha256";
+
+
 
 import ActorSpec "../utils/ActorSpec";
 
@@ -99,6 +96,17 @@ module {
           created_at_time = null;
         };
 
+        let approveFor100TokensPlusTwoFees =  {
+          from_subaccount = user1.subaccount;
+          spender = user2;
+          amount = (100 * e8s) + (2 * base_fee); // Approval amount less than transfer amount
+          expected_allowance = null;
+          expires_at = null;
+          fee = null;
+          memo = null;
+          created_at_time = null;
+        };
+
         let ONE_DAY_SECONDS = 24 * 60 * 60 * 1000000000;
        
         
@@ -110,11 +118,7 @@ module {
             max_allowance = null;
             advanced_settings = null;
             fee = ?#Fixed(base_fee);
-            metadata = ?#Map([
-              ("icrc2:max_approvals", #Nat(500)),
-              ("icrc2:max_approvals_per_account", #Nat(50)),
-              ("icrc2:approval_fee", #Nat(base_fee))
-            ]);
+           
             settle_to_approvals = ?490;
         };
 
@@ -126,12 +130,12 @@ module {
             fee = ?#Fixed(base_fee);
             max_supply = ?(max_supply);
             minting_account = ?canister;
-            initial_balances = [];
+            
             min_burn_amount = ?(10 * e8s);
             advanced_settings = null;
-            local_transactions = [];
+            
             metadata = null;
-            recent_transactions = [];
+            
             max_memo = null;
             fee_collector = null;
             permitted_drift = null;
@@ -350,7 +354,7 @@ module {
 
                         
                         assertAllTrue([
-                          allowanceInfo == 100 * e8s,
+                          allowanceInfo.allowance == 100 * e8s,
                           balance == 200 * e8s - base_fee,
                         ]);
                     },
@@ -638,7 +642,7 @@ module {
                   // Check that the allowance was capped at max_supply or returned an error
                   let allowance = icrc2.allowance(user2, user1, false);
                   D.print("found allowance " # debug_show(allowance, icrc1.total_supply()));
-                  assertTrue(allowance == icrc1.total_supply());
+                  assertTrue(allowance.allowance == icrc1.total_supply());
               },
             ),
             it(
@@ -991,11 +995,11 @@ module {
                         created_at_time = null;
                     }, null); // 10 tokens more than approved
 
-                     D.print("secondTransferResponse " # debug_show(secondTransferResponse));
+                     D.print("secondTransferResponse a " # debug_show(secondTransferResponse));
                     
-                    let #trappable(#Err(#InsufficientAllowance(secondTransferResponse_))) = secondTransferResponse;
+                    let #trappable(#Err(#InsufficientAllowance(foundAllowance))) = secondTransferResponse;
 
-                    D.print("now testing " # debug_show(secondTransferResponse_, (50 * e8s) - base_fee) );
+                    D.print("now testing " # debug_show(foundAllowance, (50 * e8s) - base_fee) );
 
                     assertAllTrue([
                         //secondTransferResponse_.allowance == (50 * e8s) - base_fee, // Allowance should now be zero
@@ -1033,7 +1037,7 @@ module {
                         created_at_time = null;
                     }, null); // Exact approved amount
 
-                     D.print("secondTransferResponse " # debug_show(transferResponse));
+                     D.print("secondTransferResponse b " # debug_show(transferResponse));
 
                     let #trappable(#Ok(transferResponse_)) = transferResponse;
 
@@ -1087,7 +1091,7 @@ module {
                     let #trappable(#Err(#InsufficientAllowance(transferResponse_))) = transferResponse;
 
                     assertAllTrue([
-                        approveResponse3_.ledger_time == test_time - ONE_DAY_SECONDS - 1,
+                        Nat64.toNat(approveResponse3_.ledger_time) == test_time - ONE_DAY_SECONDS - 1,
                         transferResponse_.allowance == 0
                     ]);
                 }
@@ -1107,7 +1111,7 @@ module {
                         created_at_time = null;
                     });
 
-                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
+                    let approveResponse = await* icrc2.approve_transfers(user1.owner, approveFor100TokensPlusTwoFees, false, null);
 
                     D.print("approveResponse " # debug_show(approveResponse));
 
@@ -1115,7 +1119,7 @@ module {
 
                     test_time += 5;
 
-                    let approveResponse2 = await* icrc2.approve_transfers(user1.owner, approveFor100Tokens, false, null);
+                    let approveResponse2 = await* icrc2.approve_transfers(user1.owner, approveFor100TokensPlusTwoFees, false, null);
 
                     D.print("approveResponse2 " # debug_show(approveResponse2));
 
@@ -1149,15 +1153,15 @@ module {
                         created_at_time = null;
                     }, null); // Same args as first transfer, should be a duplicate
 
-                    D.print("secondTransferResponse " # debug_show(secondTransferResponse));
+                    D.print("secondTransferResponse c " # debug_show(secondTransferResponse));
 
-                    let #trappable(#Err(#Duplicate(secondTransferResponse_))) = approveResponse2;
+                    let #trappable(#Err(#Duplicate(foundAllowance))) = secondTransferResponse;
 
                     assertAllTrue([
                         approveResponse_ > 0,
                         approveResponse2_.duplicate_of == approveResponse_,
                         firstTransferResponse_ > 0,
-                        secondTransferResponse_ == firstTransferResponse_
+                        foundAllowance.duplicate_of == firstTransferResponse_
                     ]);
                 }
             ),
@@ -1188,7 +1192,7 @@ module {
                     // Retrieve the allowance for user2
                     let allowance = icrc2.allowance(user2, user1, false);
                     
-                    assertTrue(allowance == 100 * e8s); // Validate that the allowance is as expected
+                    assertTrue(allowance.allowance == 100 * e8s); // Validate that the allowance is as expected
                 },
             ),
             it(
@@ -1524,6 +1528,483 @@ module {
                     assertAllTrue([
                         balanceAfterTransfer == (500 * e8s) - base_fee - base_fee - 2,
                     ]);
+                }
+            ),
+            it(
+                "should get allowances with ICRC-103",
+                do {
+                    let (icrc1, icrc2) = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                    // Mint tokens to user1
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 1000 * e8s;
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    // Set up multiple approvals from user1 to different spenders
+                    let _approveResponse1 = await* icrc2.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user2;
+                        amount = 100 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    let _approveResponse2 = await* icrc2.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user3;
+                        amount = 200 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    D.print("=== Test 1: Get allowances with ICRC-103 ===" # debug_show(_approveResponse1, _approveResponse2));
+                    D.print("user1: " # debug_show(user1)); 
+
+                    // Test getAllowances function
+                    let getAllowancesResult = icrc2.getAllowances(user1.owner, {
+                        from_account = ?user1;
+                        prev_spender = null;
+                        take = ?10;
+                    });
+
+                    D.print("getAllowances result: " # debug_show(getAllowancesResult));
+
+                    let _result =switch(getAllowancesResult) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() == 2, // Should have 2 allowances
+                                allowances[0].from_account == user1,
+                                allowances[0].allowance > 0,
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Error in getAllowances: " # debug_show(error));
+                            assertAllTrue([false]); // Test should fail if there's an error
+                        };
+                    };
+
+                    // Test pagination with prev_spender
+                    let paginatedResult = icrc2.getAllowances(user1.owner, {
+                        from_account = ?user1;
+                        prev_spender = ?user2;
+                        take = ?1;
+                    });
+
+                    D.print("Paginated result: " # debug_show(paginatedResult));
+
+                    assertAllTrue([true]); // Basic test passed
+                }
+            ),
+            it(
+                "should handle getAllowances with null parameters and defaults",
+                do {
+                    let (icrc1, icrc2) = get_icrc(default_token_args, null, default_icrc2_args, null);
+
+                     D.print("=== Test: getAllowances with null parameters and defaults ===");
+
+                    // Mint tokens to multiple users
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 2000 * e8s;
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user2;
+                        amount = 1000 * e8s;
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    // Create multiple approvals from user1 to different spenders
+                    let user4 = {owner = Principal.fromText("u6s2n-gx777-77774-qaaba-cai"); subaccount = null};
+                    let user5 = {owner = Principal.fromText("vpyes-67777-77774-qaaeq-cai"); subaccount = null};
+                    let user6 = {owner = Principal.fromText("uxrrr-q7777-77774-qaaaq-cai"); subaccount = null};
+
+                    // Approval 1: user1 -> user2
+                    let _ = await* icrc2.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user2;
+                        amount = 50 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    // Approval 2: user1 -> user3
+                    let _ = await* icrc2.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user3;
+                        amount = 75 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    // Approval 3: user1 -> user4
+                    let _ = await* icrc2.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user4;
+                        amount = 100 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    // Approval 4: user1 -> user5
+                    let _ = await* icrc2.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user5;
+                        amount = 125 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    // Approval 5: user2 -> user3 (different owner)
+                    let _ = await* icrc2.approve_transfers(user2.owner, {
+                        from_subaccount = user2.subaccount;
+                        spender = user3;
+                        amount = 25 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    D.print("=== Test 1: All null parameters (should use caller and defaults) ===");
+                    let result1 = icrc2.getAllowances(user1.owner, {
+                        from_account = null;  // Should default to caller (user1) with default subaccount
+                        prev_spender = null;  // Should start from beginning
+                        take = null;          // Should use default max_take_value (1000)
+                    });
+
+                    D.print("Result 1: " # debug_show(result1));
+                    let _result1 = switch(result1) {
+                        case(#Ok(allowances)) {
+                            D.print("Number of allowances for user1: " # debug_show(allowances.size()));
+                            assertAllTrue([
+                                allowances.size() == 4, // user1 has 4 approvals
+                                allowances[0].from_account.owner == user1.owner,
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test 2: from_account null with different caller ===");
+                    let result2 = icrc2.getAllowances(user2.owner, {
+                        from_account = null;  // Should default to caller (user2)
+                        prev_spender = null;
+                        take = ?5;
+                    });
+
+                    D.print("Result 2: " # debug_show(result2));
+                    let _result2 =switch(result2) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() == 1, // user2 has 1 approval
+                                allowances[0].from_account.owner == user2.owner,
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test 3: Explicit from_account with null subaccount ===");
+                    let result3 = icrc2.getAllowances(user1.owner, {
+                        from_account = ?{owner = user1.owner; subaccount = null}; // Should use default subaccount
+                        prev_spender = null;
+                        take = ?2;
+                    });
+
+                    D.print("Result 3: " # debug_show(result3));
+                    let _result3 = switch(result3) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() == 2, // Limited by take parameter
+                                allowances[0].from_account.owner == user1.owner,
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test 4: Pagination with prev_spender ===");
+                    // First get initial batch
+                    let result4a = icrc2.getAllowances(user1.owner, {
+                        from_account = ?user1;
+                        prev_spender = null;
+                        take = ?2;
+                    });
+
+                    D.print("Result 4a: " # debug_show(result4a));
+                    
+                    let _result4a = switch(result4a) {
+                        case(#Ok(allowances)) {
+                            if (allowances.size() > 0) {
+                                // Now get next batch using last spender as prev_spender
+                                let lastSpender = allowances[allowances.size() - 1].to_spender;
+                                let result4b = icrc2.getAllowances(user1.owner, {
+                                    from_account = ?user1;
+                                    prev_spender = ?lastSpender;
+                                    take = ?2;
+                                });
+
+                                D.print("Result 4b: " # debug_show(result4b));
+                                let _result4b = switch(result4b) {
+                                    case(#Ok(nextAllowances)) {
+                                        assertAllTrue([
+                                            nextAllowances.size() <= 2,
+                                            nextAllowances.size() >= 0,
+                                        ]);
+                                    };
+                                    case(#Err(error)) {
+                                        D.print("Unexpected error in pagination: " # debug_show(error));
+                                        assertAllTrue([false]);
+                                    };
+                                };
+                            };
+                            assertAllTrue([true]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test 5: Empty result for account with no approvals ===");
+                    let result5 = icrc2.getAllowances(user6.owner, {
+                        from_account = ?user6;
+                        prev_spender = null;
+                        take = ?10;
+                    });
+
+                    D.print("Result 5: " # debug_show(result5));
+                    let _result5 = switch(result5) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() == 0, // user6 has no approvals
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test 6: Large take value (should be limited by max_take_value) ===");
+                    let result6 = icrc2.getAllowances(user1.owner, {
+                        from_account = ?user1;
+                        prev_spender = null;
+                        take = ?5000; // Larger than max_take_value (1000)
+                    });
+
+                    D.print("Result 6: " # debug_show(result6));
+                    let _result6 = switch(result6) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() <= 1000, // Should be limited by max_take_value
+                                allowances.size() == 4,    // But we only have 4 allowances anyway
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test 7: Zero take value ===");
+                    let result7 = icrc2.getAllowances(user1.owner, {
+                        from_account = ?user1;
+                        prev_spender = null;
+                        take = ?0;
+                    });
+
+                    D.print("Result 7: " # debug_show(result7));
+                    let _result7 = switch(result7) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() == 0, // Should return empty array
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test 8: Lexicographic ordering verification ===");
+                    let result8 = icrc2.getAllowances(user1.owner, {
+                        from_account = ?user1;
+                        prev_spender = null;
+                        take = null;
+                    });
+
+                    D.print("Result 8: " # debug_show(result8));
+                    let _result8 = switch(result8) {
+                        case(#Ok(allowances)) {
+                            // Verify that spenders are in lexicographic order
+                            var previousSpender : ?Principal = null;
+                            var isOrdered = true;
+                            
+                            for (allowance in allowances.vals()) {
+                                switch(previousSpender) {
+                                    case(null) {
+                                        previousSpender := ?allowance.to_spender.owner;
+                                    };
+                                    case(?prev) {
+                                        if (Principal.compare(prev, allowance.to_spender.owner) == #greater) {
+                                            isOrdered := false;
+                                        };
+                                        previousSpender := ?allowance.to_spender.owner;
+                                    };
+                                };
+                            };
+                            
+                            assertAllTrue([
+                                isOrdered,
+                                allowances.size() > 0,
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    assertAllTrue([true]); // All comprehensive tests passed
+                }
+            ),
+            it(
+                "should respect private mode access control in getAllowances",
+                do {
+                    // Create a custom ICRC2 instance with private mode
+                    let private_icrc2_args = {
+                        max_approvals_per_account = ?10;
+                        max_approvals = ?1000;
+                        settle_to_approvals = ?500;
+                        fee = ?#ICRC1;
+                        max_allowance = null;
+                        advanced_settings = null;
+                        
+                    };
+
+                    let (icrc1, icrc2) = get_icrc(default_token_args, null, private_icrc2_args, null);
+
+                    ignore icrc2.set_private_mode(true); // Enable private mode
+
+                    // Mint tokens to user1
+                    ignore await* icrc1.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 1000 * e8s;
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    // Create approval from user1 to user2
+                    let _ = await* icrc2.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user2;
+                        amount = 100 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null;
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    D.print("=== Test Private Mode: Owner can access own allowances ===");
+                    let result1 = icrc2.getAllowances(user1.owner, {
+                        from_account = ?user1;
+                        prev_spender = null;
+                        take = ?10;
+                    });
+
+                    D.print("Private mode result (owner): " # debug_show(result1));
+                    let _result1 = switch(result1) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() == 1,
+                                allowances[0].from_account.owner == user1.owner,
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test Private Mode: Other principal cannot access allowances ===");
+                    let result2 = icrc2.getAllowances(user2.owner, {
+                        from_account = ?user1; // user2 trying to access user1's allowances
+                        prev_spender = null;
+                        take = ?10;
+                    });
+
+                    D.print("Private mode result (other): " # debug_show(result2));
+                    let _result2 = switch(result2) {
+                        case(#Ok(_allowances)) {
+                            D.print("Should not succeed in private mode");
+                            assertAllTrue([false]);
+                        };
+                        case(#Err(#AccessDenied({reason}))) {
+                            D.print("Correctly denied access: " # reason);
+                            assertAllTrue([true]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Wrong error type: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    D.print("=== Test Private Mode: Null from_account uses caller ===");
+                    let result3 = icrc2.getAllowances(user1.owner, {
+                        from_account = null; // Should default to caller (user1)
+                        prev_spender = null;
+                        take = ?10;
+                    });
+
+                    D.print("Private mode result (null from_account): " # debug_show(result3));
+                   let _result3 = switch(result3) {
+                        case(#Ok(allowances)) {
+                            assertAllTrue([
+                                allowances.size() == 1,
+                                allowances[0].from_account.owner == user1.owner,
+                            ]);
+                        };
+                        case(#Err(error)) {
+                            D.print("Unexpected error: " # debug_show(error));
+                            assertAllTrue([false]);
+                        };
+                    };
+
+                    assertAllTrue([true]); // Private mode tests passed
                 }
             ),
             

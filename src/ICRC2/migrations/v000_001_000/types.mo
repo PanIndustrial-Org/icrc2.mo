@@ -10,8 +10,8 @@ import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Star "mo:star/star";
 
-import MapLib "mo:map9/Map";
-import SetLib "mo:map9/Set";
+import MapLib "mo:map/Map";
+import SetLib "mo:map/Set";
 import VecLib "mo:vector";
 
 import ICRC1 "mo:icrc1-mo/ICRC1/";
@@ -290,15 +290,19 @@ module {
   /// approvalEquals is a function that checks the equality of two account approval mappings.
   public func approvalEquals(x: (Account, Account), y: (Account, Account)) : Bool{
     // Compare the approval mappings between accounts.
-    if(x!=y) return false;
-    return ICRC1.account_eq(x.1, y.1);
+    
+    return ICRC1.account_eq(x.0, y.0) and ICRC1.account_eq(x.1, y.1);
   };
 
   /// approvalHash32 hashes approval mappings to a 32-bit value.
   public func approvalHash32(x : (Account, Account)) : Nat32 {
     // Hash the approval mapping of two accounts to produce a 32-bit hash.
-    var accumulator = ICRC1.ahash.0(x.1);
+    var accumulator = ICRC1.ahash.0(x.0);
+    accumulator *%= 7;
     accumulator +%= ICRC1.ahash.0(x.1);
+    if(accumulator < 0) {
+      accumulator := 1;
+    };
     return accumulator;
   };
 

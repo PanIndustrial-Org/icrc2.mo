@@ -1,0 +1,9 @@
+CHANGELOG
+
+v0.0.16
+
+- Added ICRC-103 function to get allowances.
+- Updated mops dependencies
+- updated to dfx 0.27.0
+- updated to base 0
+- fixed allowance lookup bug. Old allowances will be invalidated upon upgrade. Create a migration that moves allowances to a new icrc2 component if you would like to preserve them.

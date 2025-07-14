@@ -67,10 +67,31 @@ module {
     expires_at : ?Nat64;
   };
 
+  public type AllowanceDetail = {
+    from_account : Account;
+    to_spender : Account;
+    allowance : Nat;
+    expires_at : ?Nat64;
+  };
+
+  public type GetAllowancesArgs = {
+    take : ?Nat;
+    prev_spender : ?Account;
+    from_account : ?Account;
+  };
+
+  public type AllowanceResult = { #Ok : [AllowanceDetail]; #Err : GetAllowancesError };
+
+  public type GetAllowancesError = {
+    #GenericError : { message : Text; error_code : Nat };
+    #AccessDenied : { reason : Text };
+  };
+
 
   public type service = actor {
     icrc2_approve : (ApproveArgs) -> async ({ #Ok : Nat; #Err : ApproveError });
     icrc2_transfer_from : (TransferFromArgs) -> async  { #Ok : Nat; #Err : TransferFromError };
     icrc2_allowance : query (AllowanceArgs) -> async (Allowance);
+    icrc103_get_allowances : shared query GetAllowancesArgs -> async AllowanceResult;
   };
 };

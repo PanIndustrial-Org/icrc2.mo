@@ -7,6 +7,7 @@ import Principal "mo:base/Principal";
 
 import ICRC1 "mo:icrc1-mo/ICRC1";
 import ICRC2 "..";
+import Service "../service";
 
 shared ({ caller = _owner }) actor class Token  (
     init_args1 : ICRC1.InitArgs,
@@ -147,6 +148,17 @@ shared ({ caller = _owner }) actor class Token  (
 
     public shared ({ caller }) func icrc2_transfer_from(args : ICRC2.TransferFromArgs) : async ICRC2.TransferFromResponse {
         await* icrc2().transfer_from(caller, args);
+    };
+
+    public shared query ({ caller }) func icrc103_get_allowances(args: Service.GetAllowancesArgs) : async Service.AllowanceResult {
+        return icrc2().getAllowances(caller, args);
+    };
+
+    /// Set the ICRC-103 private mode for allowance queries
+    /// If is_public is true, any principal can query allowances for any other principal
+    /// If is_public is false, principals can only query their own allowances
+    public shared ({ caller = _ }) func icrc103_set_private_mode(is_public: Bool) : async Bool {
+        return icrc2().set_private_mode(is_public);
     };
 
     // Deposit cycles into this canister.

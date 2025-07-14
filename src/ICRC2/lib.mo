@@ -1,3 +1,4 @@
+import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import D "mo:base/Debug";
 import Iter "mo:base/Iter";
@@ -7,6 +8,7 @@ import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Timer "mo:base/Timer";
+import Debug "mo:base/Debug";
 
 import ICRC1 "mo:icrc1-mo/ICRC1/";
 import RepIndy "mo:rep-indy-hash";
@@ -16,14 +18,16 @@ import Vec "mo:vector";
 import Migration "./migrations";
 import MigrationTypes "./migrations/types";
 
+import Service "service";
+
 /// The ICRC2 class with all the functions for creating an
 /// ICRC2 token on the Internet Computer
 module {
 
     let debug_channel = {
-      announce = false;
+      announce = true;
       transfer = false;
-      approve = false;
+      approve = true;
     };
 
     /// # State
@@ -108,6 +112,11 @@ module {
 
     public type UpdateLedgerInfoRequest = MigrationTypes.Current.UpdateLedgerInfoRequest;
     public type MetaDatum = ICRC1.MetaDatum;
+
+    // ICRC-103 types from Service module
+    public type AllowanceResult = Service.AllowanceResult;
+    public type GetAllowancesError = Service.GetAllowancesError;
+    public type GetAllowancesArgs = Service.GetAllowancesArgs;
 
     /// # Transaction
     ///
@@ -371,6 +380,10 @@ module {
                 case(#Environment) #Nat(10000); //a lie as it is determined at runtime.
           }));
 
+          // ICRC-103 metadata entries
+          ignore Map.put(results, Map.thash, "icrc103:public_allowances", ("icrc103:public_allowances", #Text("true"))); // Change to "false" for private mode
+          ignore Map.put(results, Map.thash, "icrc103:max_take_value", ("icrc103:max_take_value", #Nat(1000)));
+
           let final_result = Iter.toArray(Map.vals(results));
 
           state.ledger_info.metadata := ?#Map(final_result);
@@ -491,7 +504,7 @@ module {
     /// timestamp validity.
     public func validate_approval(from: Account, approval : ApproveArgs,
           calculated_fee : MigrationTypes.Current.Balance,
-          system_override : Bool): Star.Star<ApproveResponse, Text>{
+          _system_override : Bool): Star.Star<ApproveResponse, Text>{
 
             
 
@@ -525,10 +538,10 @@ module {
             };
 
             //test that the memo is not too large
-            let ?(memo) = environment.icrc1.testMemo(approval.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
+            let ?(_memo) = environment.icrc1.testMemo(approval.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
 
             //test that the expires is not in the past
-            let ?(expires_at) = testExpiresAt(approval.expires_at) else return #trappable(#Err(#Expired({ledger_time = environment.icrc1.get_time64()})));
+            let ?(_expires_at) = testExpiresAt(approval.expires_at) else return #trappable(#Err(#Expired({ledger_time = environment.icrc1.get_time64()})));
 
             //check from and spender account not equal
             if(account_eq(from, approval.spender)){
@@ -617,10 +630,10 @@ module {
       };
 
       //test that the memo is not too large
-      let ?(memo) = environment.icrc1.testMemo(transfer.memo) else return (#err("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"), null);
+      let ?(_memo) = environment.icrc1.testMemo(transfer.memo) else return (#err("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"), null);
 
       //test that the expires is not in the past
-      let ?(expires_at) = testExpiresAt(currentApproval.expires_at) else{
+      let ?(_expires_at) = testExpiresAt(currentApproval.expires_at) else{
         if(clean){
           ignore Map.remove<(Account,Account), ApprovalInfo>(state.token_approvals, apphash, (transfer.from, spender));
           unIndex(transfer.from, spender);
@@ -984,7 +997,7 @@ module {
 
             environment.icrc1.add_local_ledger(tx);
           };
-          case(?val) val(finaltx, finaltxtop);
+          case(?val) val<system>(finaltx, finaltxtop);
       };
 
       //approvals overwrite
@@ -1119,6 +1132,209 @@ module {
             };
           };
         };
+      };
+    };
+
+    public func getAllowances(caller: Principal, args: Service.GetAllowancesArgs) : AllowanceResult {
+      // Check if ledger implements private version
+      let isPrivate : Bool = switch(state.ledger_info.metadata) {
+        case(?#Map(entries)) {
+          let found = Array.find<(Text, ICRC1.Value)>(entries, func((key, _)) = key == "icrc103:public_allowances");
+          switch(found) {
+            case(?item){
+              if(item.0 == "icrc103:public_allowances"){
+                switch(item.1) {
+                  case(#Text(n)) {
+                    if(n == "true") {
+                      true; // Public allowances
+                    } else {
+                      false; // Private allowances
+                    };
+                  };
+                  case(_)false;
+                };
+                  
+              } else {
+                false; // Default if not found
+              };
+            };
+            case(_) false;
+              
+          };
+        };
+        case(_) false;
+      };
+
+      debug if(debug_channel.announce) D.print("getAllowances called with args: " # debug_show(args, isPrivate));
+
+      // Get max_take_value from metadata (default to 1000 if not set)
+      let maxTakeValue = switch(state.ledger_info.metadata) {
+        case(?#Map(entries)) {
+          let found : ?(Text, ICRC1.Value) = Array.find<(Text, ICRC1.Value)>(entries, func((key, _)) = key == "icrc103:max_take_value");
+          switch(found) {
+            case(?item){
+              if(item.0 == "icrc103:max_take_value") {
+                switch(item.1) {
+                  
+                  case(#Nat(val)) val;
+                  case(_) 1000; // Default if not a Nat or Nat64
+                };
+              } else {
+                1000; // Default if not found
+              };
+            };
+            case(_) 1000;
+          };
+        };
+        case(_) 1000;
+      };
+
+      debug if(debug_channel.announce) D.print("maxTakeValue: " # debug_show(maxTakeValue));
+
+      // Determine from_account
+      let fromAccount = switch(args.from_account) {
+        case(?account) {
+          // Fill in default subaccount if not provided
+          {
+            owner = account.owner;
+            subaccount = switch(account.subaccount) {
+              case(?sub) ?sub;
+              case(null) ?Blob.fromArray(Array.freeze(Array.init<Nat8>(32, 0)));
+            };
+          };
+        };
+        case(null) {
+          // Use caller with default subaccount
+          {
+            owner = caller;
+            subaccount = ?Blob.fromArray(Array.freeze(Array.init<Nat8>(32, 0)));
+          };
+        };
+      };
+
+      debug if(debug_channel.announce) D.print("fromAccount: " # debug_show(fromAccount));
+
+      // Check access permissions for private version
+      if (isPrivate and fromAccount.owner != caller) {
+        return #Err(#AccessDenied({ reason = "Access denied: cannot query allowances for other principals in private mode" }));
+      };
+
+      // Determine take value
+      let takeValue = switch(args.take) {
+        case(?t) Nat.min(t, maxTakeValue);
+        case(null) maxTakeValue;
+      };
+
+      // Get all allowances for the owner
+      let ownerAllowances = switch(Map.get(state.indexes.owner_to_approval_account, ahash, fromAccount)) {
+        case(?spenderSet) {
+          // Convert set to array and sort lexicographically
+          debug if(debug_channel.announce) D.print("Found spender set for " # debug_show(Set.size(spenderSet)) # " spenders");
+          var spenders = Set.toArray(spenderSet);
+          spenders := Array.sort<Account>(spenders, func(a, b) {
+            // Compare by owner principal first, then by subaccount
+            let ownerComp = Principal.compare(a.owner, b.owner);
+            if (ownerComp != #equal) return ownerComp;
+            
+            // Compare subaccounts
+            switch(a.subaccount, b.subaccount) {
+              case(?subA, ?subB) Blob.compare(subA, subB);
+              case(?_, null) #greater;
+              case(null, ?_) #less;
+              case(null, null) #equal;
+            };
+          });
+          
+          // Filter and collect valid allowances
+          let validAllowances = Vec.new<Service.AllowanceDetail>();
+          let currentTime = environment.icrc1.get_time64();
+          
+          for (spender in spenders.vals()) {
+            debug if(debug_channel.announce) D.print("Checking spender: " # debug_show(spender) # " for fromAccount: " # debug_show(fromAccount)  );
+
+            switch(Map.get(state.token_approvals, apphash, (fromAccount, spender))) {
+              case(?approval) {
+                debug if(debug_channel.announce) D.print("Found approval for spender " # debug_show(spender) # " with amount " # debug_show(approval.amount));
+                // Check if approval is not expired
+                let isValid = switch(approval.expires_at) {
+                  case(?expiry) expiry > currentTime;
+                  case(null) true;
+                };
+
+                debug if(debug_channel.announce) D.print("Approval for spender " # debug_show(spender) # " is valid: " # debug_show(isValid));
+                
+                if (isValid and approval.amount > 0) {
+                  Vec.add(validAllowances, {
+                    from_account = fromAccount;
+                    to_spender = spender;
+                    allowance = approval.amount;
+                    expires_at = approval.expires_at;
+                  });
+                };
+              };
+              case(null) {
+                debug if(debug_channel.announce) D.print("No approval found for spender " # debug_show(spender) # " from account " # debug_show(fromAccount));
+                debug if(debug_channel.announce) D.print("Skipping spender " # debug_show(Map.toArray(state.token_approvals)) # " as no approval exists or it is expired");
+              }; // Should not happen if index is consistent
+            };
+          };
+          
+          Vec.toArray(validAllowances);
+        };
+        case(null) [];
+      };
+
+      debug if(debug_channel.announce) D.print("Found " # debug_show(ownerAllowances.size()) # " allowances for fromAccount: " # debug_show(fromAccount));
+
+      // Find starting position based on prev_spender
+      let startIndex = switch(args.prev_spender) {
+        case(?prevSpender) {
+          // Find the position immediately after prev_spender
+          var index = 0;
+          var found = false;
+          label search for (allowance in ownerAllowances.vals()) {
+            let comp = compareAccounts(allowance.to_spender, prevSpender);
+            if (comp == #greater) {
+              found := true;
+              break search;
+            };
+            if (comp == #equal) {
+              index += 1;
+              found := true;
+              break search;
+            };
+            index += 1;
+          };
+          if (found) index else ownerAllowances.size();
+        };
+        case(null) 0;
+      };
+
+      // Extract the requested slice
+      let endIndex = Nat.min(startIndex + takeValue, ownerAllowances.size());
+
+      debug if(debug_channel.announce) D.print("Returning allowances from index " # debug_show(startIndex) # " to " # debug_show(endIndex) # " for fromAccount: " # debug_show(fromAccount));
+      let result = if (startIndex >= ownerAllowances.size()) {
+        [];
+      } else {
+        Array.tabulate<Service.AllowanceDetail>(endIndex - startIndex, func(i) {
+          ownerAllowances[startIndex + i];
+        });
+      };
+
+      #Ok(result);
+    };
+
+    // Helper function to compare accounts lexicographically
+    private func compareAccounts(a: Account, b: Account) : {#less; #equal; #greater} {
+      let ownerComp = Principal.compare(a.owner, b.owner);
+      if (ownerComp != #equal) return ownerComp;
+      
+      switch(a.subaccount, b.subaccount) {
+        case(?subA, ?subB) Blob.compare(subA, subB);
+        case(?_, null) #greater;
+        case(null, ?_) #less;
+        case(null, null) #equal;
       };
     };
 
@@ -1273,7 +1489,7 @@ module {
             //use local ledger. This will not scale
             environment.icrc1.add_local_ledger(tx);
           };
-          case(?val) val(txMap, ?txTopMap);
+          case(?val) val<system>(txMap, ?txTopMap);
         };
 
         for(thisEvent in Vec.vals(token_approved_listeners)){
@@ -1377,12 +1593,61 @@ module {
       return Vec.toArray(results);
     };
 
+    /// # set_private_mode
+    ///
+    /// Updates the ICRC-103 public allowances setting to control whether allowance queries are public or private.
+    ///
+    /// ## Parameters
+    ///
+    /// - `is_public`: `Bool` - If true, sets allowances to public mode (any principal can query allowances for any other principal). 
+    ///                         If false, sets allowances to private mode (principals can only query their own allowances).
+    ///
+    /// ## Returns
+    ///
+    /// `Bool` - Returns true if the update was successful.
+    ///
+    /// ## Remarks
+    ///
+    /// In public mode (`true`), the `icrc103:public_allowances` metadata is set to "true", allowing any caller to query 
+    /// allowances for any account. In private mode (`false`), it's set to "false", restricting queries to the account owner only.
+    /// This function updates the metadata and re-initializes it to ensure the changes are properly registered.
+    public func set_private_mode(is_public: Bool) : Bool {
+      // Update the metadata directly in the state
+      switch(state.ledger_info.metadata) {
+        case(?#Map(entries)) {
+          // Find and update the icrc103:public_allowances entry
+          let results = Map.new<Text, ICRC1.MetaDatum>();
+          
+          // Copy existing metadata
+          for(thisItem in entries.vals()){
+            ignore Map.put(results, Map.thash, thisItem.0, thisItem);
+          };
+          
+          // Update the icrc103:public_allowances value
+          let new_value = if (is_public) "true" else "false";
+          ignore Map.put(results, Map.thash, "icrc103:public_allowances", ("icrc103:public_allowances", #Text(new_value)));
+          
+          let final_result = Iter.toArray(Map.vals(results));
+          state.ledger_info.metadata := ?#Map(final_result);
+          ignore environment.icrc1.register_metadata(final_result);
+          
+          true;
+        };
+        case(_) {
+          // If no metadata exists, initialize it with the new setting
+          ignore init_metadata();
+          // Then update the specific value
+          set_private_mode(is_public);
+        };
+      };
+    };
+
     /// Event callback that is triggered post token transfer, used to revoke any approvals upon ownership change.
     /// - Parameters:
     ///     - from: `?Account` - The previous owner's account.
     ///     - to: `Account` - The new owner's account.
     ///     - trx_id: `Nat` - The unique identifier for the transfer transaction.
-    private func token_transferred<system>(transfer: Transaction, trx_id: Nat) : (){
+    private func token_transferred<system>(_transfer: Transaction, _trx_id: Nat) : (){
       //todo: nothing now but maybe we remove approvals of balances that go to 0?
     };
 
@@ -1459,7 +1724,7 @@ module {
           };
         };
 
-        Vec.add(trx,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
+        Vec.add(trxtop,("ts", #Nat(Nat64.toNat(environment.icrc1.get_time64()))));
         Vec.add(trx,("op", #Text("xfer")));
         Vec.add(trxtop,("btype", #Text("2xfer")));
         
@@ -1568,7 +1833,7 @@ module {
 
         let icrc1state = environment.icrc1.get_state();
 
-        let tx_req = if(account_eq(environment.icrc1.minting_account(), notification.to)){
+        let _tx_req = if(account_eq(environment.icrc1.minting_account(), notification.to)){
             ICRC1.UtilsHelper.burn_balance(icrc1state, notification.from, notification.amount);
              {
                 kind = #burn;
@@ -1643,7 +1908,7 @@ module {
 
 
         // store transaction
-        let index = environment.icrc1.handleAddRecordToLedger(finaltx,finaltxtop_var, {amount = notification.amount;
+        let index = environment.icrc1.handleAddRecordToLedger<system>(finaltx,finaltxtop_var, {amount = notification.amount;
                           calculated_fee = notification.calculated_fee;
                           created_at_time = notification.created_at_time;
                           fee = notification.fee;
@@ -1761,13 +2026,15 @@ module {
     /// ```
     public func transfer_tokens_from<system>(caller: Principal, transferFromArgs: TransferFromArgs, canTransferFrom: CanTransferFrom) : async* Star.Star<TransferFromResponse, Text> {
 
+
+     
       //check to and from account not equal
       if(account_eq(transferFromArgs.to, transferFromArgs.from)){
         return #err(#trappable("cannot transfer tokens to same account"));
       };
 
       //test that the memo is not too large
-      let ?(memo) = environment.icrc1.testMemo(transferFromArgs.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
+      let ?(_memo) = environment.icrc1.testMemo(transferFromArgs.memo) else return #err(#trappable("invalid memo. must be less than " # debug_show(environment.icrc1.get_state().max_memo) # " bits"));
 
       
       //make sure the approval is not too old or too far in the future
@@ -1821,6 +2088,11 @@ module {
     ignore environment.icrc1.register_supported_standards({
         name = "ICRC-2";
         url = "https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-2/";
+    });
+
+    ignore environment.icrc1.register_supported_standards({
+        name = "ICRC-103";
+        url = "https://github.com/dfinity/ICRC/blob/main/ICRCs/ICRC-103";
     });
 
 

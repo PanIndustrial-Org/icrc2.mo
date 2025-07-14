@@ -1,6 +1,6 @@
 # icrc2.mo
 
-## Warning - This is an alpha release. It has not been audited and should not be used in production.
+## Warning - While this this module has been running in production for over a year, It has not been audited and you should use it at your own risk.  If you would like to contribute to getting the library audited, please send an email to austin at panindustrial dot com.
 
 ## Install
 ```
