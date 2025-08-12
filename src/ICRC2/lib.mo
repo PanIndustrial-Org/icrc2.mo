@@ -1783,35 +1783,7 @@ module {
               case(#trappable(val)) val;
               case(#awaited(val)){
 
-                let override_fee = val.2.calculated_fee;
-                //revalidate 
-                current_approval := switch (validate_transfer_from(spender, {
-                  amount = val.2.amount;
-                  created_at_time = val.2.created_at_time;
-                  fee = val.2.fee;
-                  spender_subaccount = val.2.spender.subaccount;
-                  from = val.2.from;
-                  to = val.2.to;
-                  memo = val.2.memo;
-                  }, override_fee, true)) {
-                    case((#ok(val), approval)){
-                      switch(val){
-                        case(#Ok(_)){
-                          switch(approval){
-                            case(null) return #err(#awaited("unreachable"));//unreachable;
-                            case(?val) val;
-                          }
-                        };
-                        case(#Err(err)){
-                          return #awaited(#Err(err));
-                        };
-                      };
-                    };
-                    case((#err(err), _)){
-                      return #err(#awaited(err));
-                    };
-                    
-                  };
+                
                 val;
               };
               case(#err(#awaited(tx))){
@@ -1823,6 +1795,38 @@ module {
             };
           };
         };
+
+        //revalidate fee
+        let override_fee = preNotification.calculated_fee;
+        //revalidate 
+        current_approval := switch (validate_transfer_from(spender, {
+            amount = preNotification.amount;
+            created_at_time = preNotification.created_at_time;
+            fee = preNotification.fee;
+            spender_subaccount = preNotification.spender.subaccount;
+            from = preNotification.from;
+            to = preNotification.to;
+            memo = preNotification.memo;
+            }, override_fee, true)) {
+              case((#ok(val), approval)){
+                switch(val){
+                  case(#Ok(_)){
+                    switch(approval){
+                      case(null) return #err(#awaited("unreachable"));//unreachable;
+                      case(?val) val;
+                    }
+                  };
+                  case(#Err(err)){
+                    return #awaited(#Err(err));
+                  };
+                };
+              };
+              case((#err(err), _)){
+                return #err(#awaited(err));
+              };
+              
+            };
+       
 
         //if we have reached this point, we are ready to move the tokens and add to the transaction log
 
@@ -1896,7 +1900,7 @@ module {
         };
 
         //remove the approved amount.
-        if(current_approval.amount > notification.amount + fee){
+        if(current_approval.amount > (notification.amount + final_fee)){
           ignore Map.put(state.token_approvals, apphash, (notification.from, notification.spender), {
             current_approval with
             amount = current_approval.amount - (notification.amount + final_fee);

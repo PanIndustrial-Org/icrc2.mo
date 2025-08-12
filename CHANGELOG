@@ -1,5 +1,9 @@
 CHANGELOG
 
+v0.0.17
+
+- bug fix for when calculated fee is less than icrc1 fee.
+
 v0.0.16
 
 - Added ICRC-103 function to get allowances.

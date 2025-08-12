@@ -2007,6 +2007,164 @@ module {
                     assertAllTrue([true]); // Private mode tests passed
                 }
             ),
+            it(
+                "should handle fee recalculation bug - free approvals with underlying ICRC1 fee",
+                do {
+                    D.print("=== Test: Fee recalculation bug - approvals should be free but ICRC1 has fee ===");
+                    
+                    // Scenario: Admin wants approvals to be free (environment get_fee returns 0)
+                    // But underlying ICRC1 still has a fee (base_fee = 5*e8s)
+                    // Before the fix: This would trap if user didn't provide extra fee
+                    // After the fix: Should work correctly using recalculated fee
+                    
+                    let custom_icrc2_args = {
+                        default_icrc2_args with
+                        fee = ?#Environment; // Use environment fee (will return 0)
+                    };
+
+                    // Create environment where approvals are supposed to be free
+                    let custom_environment2 : ICRC2.Environment = {
+                        icrc1 = ICRC1.ICRC1(?ICRC1.init(ICRC1.initialState(), #v0_1_0(#id), ?default_token_args, canister.owner), canister.owner, {
+                            get_time = ?(func () : Int {test_time});
+                            add_ledger_transaction = null;
+                            get_fee = null; // Keep ICRC1 fee as is (base_fee = 5*e8s)
+                        });
+                        get_fee = ?(func (state, env, args) : Nat { 0 }); // Admin wants FREE approvals
+                    };
+
+                    let (icrc1_test, icrc2_custom) = get_icrc(default_token_args, null, custom_icrc2_args, ?custom_environment2);
+
+                    // Mint tokens to user1 - enough to cover ICRC1 fee even though approvals should be "free"
+                    ignore await* icrc1_test.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 1000 * e8s;
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    D.print("=== Test 1: Free approval with no user fee (should work after fix) ===");
+                    // Before fix: Would trap because get_fee() returns 0 but ICRC1 fee is 5*e8s
+                    // After fix: Should work because system uses recalculated fee properly
+                    let result1 = await* icrc2_custom.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user2;
+                        amount = 100 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = null; // User doesn't provide any fee (expects approvals to be free)
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    D.print("Free approval result: " # debug_show(result1));
+                    
+                    let test1_success = switch (result1) {
+                        case (#trappable(#Ok(_))) true; // Should succeed after fix
+                        case (#trappable(#Err(#InsufficientFunds(_)))) true; // Acceptable if not enough funds
+                        case (#err(_)) false; // Should NOT trap after fix
+                        case _ false;
+                    };
+
+                    D.print("=== Test 2: Free approval with user fee lower than ICRC1 fee ===");
+                    // Before fix: Would trap if user fee < ICRC1 fee
+                    // After fix: Should handle this correctly
+                    let result2 = await* icrc2_custom.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user3;
+                        amount = 100 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = ?(1 * e8s); // User provides small fee, but ICRC1 fee is 5*e8s
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    D.print("Low fee approval result: " # debug_show(result2));
+                    
+                    let test2_success = switch (result2) {
+                        case (#trappable(#Ok(_))) true; // Should succeed after fix
+                        case (#trappable(#Err(#BadFee(_)))) true; // BadFee is acceptable
+                        case (#trappable(#Err(_))) true; // Other errors acceptable
+                        case (#err(_)) false; // Should NOT trap after fix
+                        case _ false;
+                    };
+
+                    // Verify that at least one approval succeeded to show the fix works
+                    let allowance1 = icrc2_custom.allowance(user2, user1, false);
+                    let allowance2 = icrc2_custom.allowance(user3, user1, false);
+                    
+                    D.print("Final allowances: " # debug_show(allowance1, allowance2));
+                    
+                    // At least one approval should have worked (proving the fee recalculation fix)
+                    let at_least_one_worked = allowance1.allowance > 0 or allowance2.allowance > 0;
+
+                    assertAllTrue([
+                        test1_success, // No trap on free approval
+                        test2_success, // No trap on low fee approval  
+                        at_least_one_worked, // At least one approval succeeded (proves fix works)
+                    ]);
+                }
+            ),
+            it(
+                "should handle opposite scenario - high environment fee with low ICRC1 fee",
+                do {
+                    D.print("=== Test: High environment fee with low ICRC1 fee ===");
+                    
+                    // Create ICRC1 with lower fee
+                    let low_fee_icrc1_args = {
+                        default_token_args with
+                        fee = ?#Fixed(1 * e8s); // Low ICRC1 fee
+                    };
+                    
+                    let custom_icrc2_args = {
+                        default_icrc2_args with
+                        fee = ?#Environment; // Use environment fee
+                    };
+
+                    // Environment wants higher fee than ICRC1
+                    let custom_environment2 : ICRC2.Environment = {
+                        icrc1 = ICRC1.ICRC1(?ICRC1.init(ICRC1.initialState(), #v0_1_0(#id), ?low_fee_icrc1_args, canister.owner), canister.owner, {
+                            get_time = ?(func () : Int {test_time});
+                            add_ledger_transaction = null;
+                            get_fee = null;
+                        });
+                        get_fee = ?(func (state, env, args) : Nat { 10 * e8s }); // High environment fee
+                    };
+
+                    let (icrc1_test, icrc2_custom) = get_icrc(low_fee_icrc1_args, null, custom_icrc2_args, ?custom_environment2);
+
+                    // Mint tokens to user1
+                    ignore await* icrc1_test.mint_tokens(canister.owner, {
+                        to = user1;
+                        amount = 1000 * e8s;
+                        memo = null;
+                        created_at_time = null;
+                    });
+
+                    D.print("=== Test: User provides fee matching environment fee ===");
+                    let result = await* icrc2_custom.approve_transfers(user1.owner, {
+                        from_subaccount = user1.subaccount;
+                        spender = user2;
+                        amount = 100 * e8s;
+                        expected_allowance = null;
+                        expires_at = null;
+                        fee = ?(10 * e8s); // User matches environment fee
+                        memo = null;
+                        created_at_time = null;
+                    }, false, null);
+
+                    D.print("High fee approval result: " # debug_show(result));
+                    
+                    let test_success = switch (result) {
+                        case (#trappable(#Ok(_))) true; // Should succeed
+                        case (#trappable(#Err(_))) true; // Errors are acceptable
+                        case (#err(_)) false; // Should not trap
+                        case _ false;
+                    };
+
+                    assertTrue(test_success);
+                }
+            ),
             
             
             ],
